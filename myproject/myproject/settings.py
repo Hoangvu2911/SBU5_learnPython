@@ -90,6 +90,17 @@ DATABASES = {
 }
 
 
+# Redis — seat hold (TTL) + hot cache (SPEC §6.1)
+REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.environ.get('REDIS_PORT', '6379'))
+REDIS_DB = int(os.environ.get('REDIS_DB', '0'))
+REDIS_URL = os.environ.get(
+    'REDIS_URL',
+    f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}',
+)
+SEAT_HOLD_TTL_SECONDS = int(os.environ.get('SEAT_HOLD_TTL_SECONDS', '600'))
+
+
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
@@ -114,7 +125,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Ho_Chi_Minh'
 
 USE_I18N = True
 

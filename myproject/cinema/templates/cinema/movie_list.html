@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh sách phim</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #e8b86d;
+      --line: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1c2a3f, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem 3rem;
+    }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    header { margin-bottom: 1.75rem; }
+    h1 {
+      margin: 0 0 0.55rem;
+      font-size: 2.75rem;
+      letter-spacing: 0.02em;
+    }
+    .sub { color: var(--muted); margin: 0; font-size: 1.5rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.5rem;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.1rem 1.15rem;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #3d4f6a;
+    }
+    .title {
+      margin: 0 0 0.5rem;
+      font-size: 1.3rem;
+      color: var(--accent);
+    }
+    .meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.75rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .chip {
+      background: #243044;
+      border-radius: 999px;
+      padding: 0.25rem 0.55rem;
+    }
+    .empty {
+      color: var(--muted);
+      padding: 2rem;
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Danh sách phim</h1>
+      <p class="sub">Các phim đang chiếu</p>
+    </header>
+
+    {% if movies %}
+      <ul class="grid">
+        {% for movie in movies %}
+          <li class="card">
+            <h2 class="title">{{ movie.title }}</h2>
+            <div class="meta">
+              <span class="chip">{{ movie.genre }}</span>
+              <span>{{ movie.duration_minutes }} phút</span>
+              <span>★ {{ movie.rating }}</span>
+              <span>{{ movie.director }}</span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">Không có phim nào. Hãy chạy seed hoặc bật <code>is_active</code>.</p>
+    {% endif %}
+  </div>
+</body>
+</html>
