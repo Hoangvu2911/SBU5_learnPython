@@ -6,6 +6,7 @@ Hệ thống đặt vé theo **suất chiếu** (Phim + Phòng + giờ).
 |--|--|
 | Vai trò | Admin (`User.is_staff`) · Customer (đã đăng nhập) · Guest |
 | CSDL | PostgreSQL |
+| Cache / giữ chỗ nhanh | **Redis** (TTL hold ghế · cache lịch/sơ đồ ghế) |
 | Thời gian | Lưu `timestamptz` (UTC) · hiển thị giờ VN |
 
 | Vai trò | Chức năng |
@@ -13,6 +14,13 @@ Hệ thống đặt vé theo **suất chiếu** (Phim + Phòng + giờ).
 | Admin | `is_staff=True` — quản lý phim, diễn viên, phòng, suất, vé |
 | Guest | Xem lịch chiếu |
 | Customer | Đăng ký/đăng nhập · xem lịch · đặt ghế · thanh toán giả lập · xem/hủy vé |
+
+**Phân tầng lưu trữ**
+
+| Nơi | Dùng cho | Vì sao |
+|-----|----------|--------|
+| PostgreSQL | Movie, Room, Showtime, Ticket `booked`/`cancelled`, audit | Bền vững, transaction, ràng buộc UNIQUE |
+| Redis | Giữ ghế tạm (`pending`), cache danh sách suất/ghế trống | TTL tự hết hạn · SET NX atomic · giảm quét/ghi DB nóng |
 
 ---
 
@@ -159,11 +167,28 @@ classDiagram
     +pay(user, ticket)
     +cancel(user, ticket)
     +cleanupPending(showtime)
+    +listSeatMap(showtime)
   }
 
   class ShowtimeService {
     +checkRoomOverlap(showtime)
     +cancelShowtime(showtime)
+  }
+
+  class SeatHoldStore {
+    <<Redis>>
+    +tryHold(showtimeId, seat, userId, ttlSec) bool
+    +getHolder(showtimeId, seat) userId?
+    +release(showtimeId, seat, userId)
+    +listHeldSeats(showtimeId)
+  }
+
+  class CacheStore {
+    <<Redis>>
+    +getShowtimeSeatSummary(showtimeId)
+    +invalidateShowtime(showtimeId)
+    +getActiveShowtimes(movieId?)
+    +invalidateSchedule()
   }
 
   User "1" --> "*" Ticket
@@ -179,18 +204,24 @@ classDiagram
   Ticket ..> SeatHelper
   BookingService ..> Showtime
   BookingService ..> Ticket
+  BookingService ..> SeatHoldStore
+  BookingService ..> CacheStore
   ShowtimeService ..> Showtime
+  ShowtimeService ..> CacheStore
+  ShowtimeService ..> SeatHoldStore
 ```
 
 | Thành phần | Trách nhiệm |
 |------------|-------------|
-| Model | Dữ liệu, validate field |
+| Model | Dữ liệu bền vững trên PostgreSQL, validate field |
 | `SeatHelper` | Sinh / kiểm tra mã ghế (10 ghế/hàng, hàng A–Z) |
 | `Showtime.isBookable(now)` | `status != cancelled` ∧ `start_at > now` |
 | `Showtime.effectiveStatus(now)` | Suy `scheduled`/`ongoing`/`completed`/`cancelled` (§5.1) |
-| `BookingService.cleanupPending` | Hủy `pending` hết hạn **hoặc** khi suất không bookable |
-| `BookingService` | `book` / `pay` / `cancel` — luôn gọi `cleanupPending` trước khi kiểm tra |
-| `ShowtimeService` | Trùng lịch phòng · hủy suất cascade |
+| `SeatHoldStore` (Redis) | Giữ ghế tạm TTL 10 phút · `SET key NX EX 600` · giải phóng khi hủy/pay/hết hạn |
+| `CacheStore` (Redis) | Cache lịch chiếu (UC09) · cache tóm tắt ghế trống/đã giữ (giảm query Ticket) |
+| `BookingService.cleanupPending` | Đồng bộ DB: hủy `pending` hết hạn / suất không bookable; xóa hold Redis tương ứng |
+| `BookingService` | `book` / `pay` / `cancel` / `listSeatMap` — hold Redis trước, DB sau |
+| `ShowtimeService` | Trùng lịch phòng · hủy suất cascade · invalidate cache/hold Redis |
 
 ---
 
@@ -313,17 +344,26 @@ Kiểu cột: tiền `NUMERIC(10,2)` · thời gian `TIMESTAMPTZ` · status `VAR
 sequenceDiagram
   actor C as Customer
   participant S as Hệ thống
+  participant R as Redis
   participant DB as PostgreSQL
 
   C->>S: Chọn suất + ghế
   S->>S: cleanupPending(showtime)
   S->>S: Đăng nhập? · bookable? · ghế hợp lệ?
-  S->>DB: INSERT ticket (pending, price = base_price)
-  alt Trùng ghế
-    DB-->>S: Unique violation
-    S-->>C: Ghế đã được giữ
-  else OK
-    S-->>C: Sang màn thanh toán
+  S->>R: SET hold:{showtime}:{seat} = userId NX EX 600
+  alt Key đã tồn tại
+    R-->>S: Fail
+    S-->>C: Ghế đang được giữ
+  else Hold OK
+    S->>DB: INSERT ticket (pending, price = base_price)
+    alt Unique violation / lỗi DB
+      DB-->>S: Lỗi
+      S->>R: DEL hold key
+      S-->>C: Ghế đã được giữ / lỗi
+    else OK
+      S->>R: Invalidate seat-map cache
+      S-->>C: Sang màn thanh toán
+    end
   end
 ```
 
@@ -333,11 +373,15 @@ sequenceDiagram
 sequenceDiagram
   actor C as Customer
   participant S as Hệ thống
+  participant R as Redis
+  participant DB as PostgreSQL
 
   C->>S: Xác nhận thanh toán
   S->>S: cleanupPending(showtime của vé)
   S->>S: Đúng chủ? · vẫn pending? · bookable?
-  S->>S: status → booked
+  S->>R: getHolder == user? (hoặc key còn / thuộc user)
+  S->>DB: status → booked
+  S->>R: DEL hold key · invalidate seat-map
   S-->>C: Thành công / Lỗi
 ```
 
@@ -347,11 +391,14 @@ sequenceDiagram
 sequenceDiagram
   actor C as Customer
   participant S as Hệ thống
+  participant R as Redis
+  participant DB as PostgreSQL
 
   C->>S: Hủy vé
   S->>S: cleanupPending(showtime của vé)
   S->>S: Đúng chủ? · pending/booked? · bookable?
-  S->>S: status → cancelled
+  S->>DB: status → cancelled
+  S->>R: DEL hold key (nếu pending) · invalidate seat-map
   S-->>C: Thành công / Lỗi
 ```
 
@@ -361,6 +408,7 @@ sequenceDiagram
 sequenceDiagram
   actor A as Admin
   participant S as Hệ thống
+  participant R as Redis
   participant DB as PostgreSQL
 
   A->>S: Hủy suất
@@ -368,7 +416,30 @@ sequenceDiagram
   S->>DB: Showtime.status → cancelled
   S->>DB: Tickets pending/booked → cancelled
   S->>DB: COMMIT
+  S->>R: Xóa mọi hold:{showtime}:* · invalidate cache suất/ghế
   S-->>A: Xong
+```
+
+### 4.5 Xem sơ đồ ghế / lịch (UC09 · listSeatMap)
+
+```mermaid
+sequenceDiagram
+  actor U as Guest/Customer
+  participant S as Hệ thống
+  participant R as Redis
+  participant DB as PostgreSQL
+
+  U->>S: Xem ghế / lịch
+  S->>R: GET cache seat-map / showtimes
+  alt Cache hit
+    R-->>S: data
+  else Cache miss
+    S->>S: cleanupPending (lazy)
+    S->>DB: tickets booked (+ pending còn hạn)
+    S->>R: SMEMBERS / SCAN hold:{showtime}:*
+    S->>R: SET cache TTL ngắn (vd. 3–10s)
+  end
+  S-->>U: Ghế trống / đang giữ / đã bán
 ```
 
 ---
@@ -414,8 +485,11 @@ stateDiagram-v2
 
 **`cleanupPending(showtime)`** (gọi trong book / pay / cancel / xem ghế):
 
-1. Mọi vé `pending` của suất có `created_at` + 10 phút ≤ now → `cancelled`  
-2. Nếu suất **không bookable** → mọi vé `pending` còn lại của suất → `cancelled`
+1. Mọi vé `pending` của suất có `created_at` + 10 phút ≤ now → `cancelled` + **DEL** hold Redis tương ứng  
+2. Nếu suất **không bookable** → mọi vé `pending` còn lại → `cancelled` + xóa hold Redis của suất  
+3. (Bổ trợ) Hold Redis đã hết TTL nhưng DB còn `pending` → coi hết hạn, chuyển `cancelled` khi chạm cleanup
+
+> Redis TTL là đường nhanh để ghế “nhả” khỏi sơ đồ; PostgreSQL vẫn là nguồn sự thật cho Ticket.
 
 ---
 
@@ -430,18 +504,41 @@ Suất `cancelled`, hoặc đã tới/qua giờ (`ongoing`/`completed` hiệu l�
 | Rule | Chi tiết |
 |------|----------|
 | Admin | `User.is_staff == True` |
-| Hiện lịch (UC09) | Phim `is_active` · suất bookable |
+| Hiện lịch (UC09) | Phim `is_active` · suất bookable · **ưu tiên đọc cache Redis** |
 | Ghế | 10 ghế/hàng (A1–A10, B1–B10, …) · tối đa 26 hàng A–Z · capacity 1–260 · số ghế hợp lệ = capacity |
 | Đặt ghế | 1 ghế / lần |
-| Giữ chỗ | `pending` tối đa 10 phút; dọn bởi `cleanupPending` |
+| Giữ chỗ | Redis hold TTL **600s** + Ticket DB `pending` · dọn bởi TTL + `cleanupPending` |
+| Trạng thái ghế (UI) | `booked` ← DB · `held` ← Redis hold còn sống · còn lại `available` |
 | Giá vé | Snapshot lúc đặt · không đổi theo suất sau |
 | `base_price` | ≥ 0 |
 | Trùng lịch phòng | `[start_at, end_at)` không giao suất khác cùng phòng có `status = scheduled` |
 | Đổi duration phim | Từ chối nếu còn **suất chưa chiếu**; không recalc `end_at` hàng loạt |
 | Sửa suất đã có vé `pending`/`booked` | Không đổi phim / phòng / `start_at` / `base_price` |
 | UC06 sửa vé | Chỉ đổi `Ticket.status`; **không** đổi `seat`, suất, giá, khách |
-| Hủy suất | DB `cancelled` + cascade vé `pending`/`booked` → `cancelled` |
+| Hủy suất | DB `cancelled` + cascade vé active → `cancelled` + **clear Redis holds/cache** |
 | Thanh toán | Giả lập trên UI |
+
+### 6.1 Redis — thiết kế key & TTL
+
+| Key pattern | Kiểu | TTL | Giá trị | Mục đích |
+|-------------|------|-----|---------|----------|
+| `hold:{showtime_id}:{seat}` | STRING | **600s** | `user_id` | Giữ ghế tạm (UC10); `SET NX EX` chống double-hold |
+| `seatmap:{showtime_id}` | STRING/HASH | 3–10s | JSON tóm tắt ghế | Cache sơ đồ ghế, giảm join Ticket |
+| `schedule:active` / `schedule:movie:{id}` | STRING | 30–60s | JSON list suất | Cache UC09 xem lịch |
+| `showtime:meta:{id}` | STRING | 30–60s | bookable, price, room… | Cache metadata suất nóng |
+
+**Quy tắc đồng bộ**
+
+| Sự kiện | Redis | PostgreSQL |
+|---------|-------|------------|
+| UC10 book | `SET hold … NX EX 600` | INSERT Ticket `pending` |
+| UC10a pay | DEL hold · invalidate `seatmap` | `pending` → `booked` |
+| UC12 cancel | DEL hold (nếu có) · invalidate | → `cancelled` |
+| TTL hold hết | Key tự mất (ghế hiện available trên map) | `cleanupPending` sửa `pending` → `cancelled` khi request chạm |
+| UC05 hủy suất | DEL `hold:{showtime}:*` · invalidate schedule/seatmap | Suất + vé active → `cancelled` |
+| Admin sửa lịch/phim ảnh hưởng list | invalidate `schedule:*` | UPDATE models |
+
+**Fail-safe:** Redis down → fallback đọc/ghi PostgreSQL (hold bằng partial unique `pending`/`booked`); chấp nhận chậm hơn, không mất đúng sai dữ liệu bền vững.
 
 ---
 
@@ -464,15 +561,18 @@ flowchart TB
     SeatHelper
   end
 
-  subgraph Persistence
+  subgraph Infrastructure
     DB[(PostgreSQL)]
+    Redis[(Redis)]
   end
 
   AdminUI --> ShowtimeService
   AdminUI --> Models
   CustomerUI --> BookingService
   BookingService --> Models
+  BookingService --> Redis
   ShowtimeService --> Models
+  ShowtimeService --> Redis
   Models --> SeatHelper
   Models --> DB
 ```
@@ -482,7 +582,7 @@ flowchart TB
 | Presentation | Admin CRUD · lịch · chọn ghế · thanh toán · vé của tôi · auth |
 | Application | `BookingService` · `ShowtimeService` |
 | Domain | Models + `SeatHelper` |
-| Persistence | PostgreSQL · migration · partial unique index |
+| Infrastructure | **PostgreSQL** (durable) · **Redis** (hold TTL + cache nóng) |
 
 ---
 
@@ -493,13 +593,15 @@ flowchart TB
 | 1 | Hai suất cùng phòng trùng giờ | Từ chối |
 | 2 | Đổi duration khi còn suất chưa chiếu | Từ chối |
 | 3 | Đổi duration khi chỉ còn suất cancelled / đã qua giờ | Cho phép |
-| 4 | Hai lần đặt cùng ghế | Một `pending`, một lỗi |
-| 5 | Đặt lại ghế đã `cancelled` | Thành công |
+| 4 | Hai lần đặt cùng ghế (Redis SET NX) | Một hold + một `pending`, một lỗi |
+| 5 | Đặt lại ghế đã `cancelled` | Thành công (hold mới) |
 | 6 | Pay / hủy sau giờ chiếu | Từ chối |
-| 7 | Admin hủy suất | Suất + vé active → `cancelled` |
-| 8 | Pay `pending` còn hạn | → `booked` |
+| 7 | Admin hủy suất | Suất + vé active → `cancelled` · Redis holds bị xóa |
+| 8 | Pay `pending` còn hạn | → `booked` · DEL hold |
 | 9 | Pay hết hạn / sai chủ | Từ chối |
-| 10 | `pending` > 10 phút (lúc book/pay/cancel/xem ghế) | → `cancelled` |
-| 11 | `pending` còn hạn nhưng suất đã bắt đầu (cleanupPending) | → `cancelled` |
-| 12 | Hủy `pending` trước pay | → `cancelled` |
+| 10 | Hold/pending > 10 phút | Redis hết TTL · DB `pending` → `cancelled` khi cleanup |
+| 11 | `pending` còn hạn nhưng suất đã bắt đầu | → `cancelled` + clear hold |
+| 12 | Hủy `pending` trước pay | → `cancelled` · DEL hold |
 | 13 | Admin UC06 đổi ghế vé | Từ chối / không cho sửa field ghế |
+| 14 | Xem sơ đồ ghế cache hit | Không query nặng Ticket nếu cache còn |
+| 15 | Redis down khi book | Fallback DB partial unique; không mất toàn vẹn |
