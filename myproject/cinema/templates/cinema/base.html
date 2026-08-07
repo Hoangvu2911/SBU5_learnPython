@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Cinema{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #e8b86d;
+      --line: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1c2a3f, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem 3rem;
+    }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    header { margin-bottom: 1.75rem; }
+    h1 {
+      margin: 0 0 0.55rem;
+      font-size: 2.75rem;
+      letter-spacing: 0.02em;
+    }
+    .sub { color: var(--muted); margin: 0; font-size: 1rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.5rem;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.1rem 1.15rem;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #3d4f6a;
+    }
+    .title {
+      margin: 0 0 0.5rem;
+      font-size: 1.3rem;
+      color: var(--accent);
+    }
+    .meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.75rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .chip {
+      background: #243044;
+      border-radius: 999px;
+      padding: 0.25rem 0.55rem;
+    }
+    .empty {
+      color: var(--muted);
+      padding: 2rem;
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+    }
+    .form-card {
+      max-width: 420px;
+      margin: 1.5rem auto 0;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.25rem 1.35rem;
+    }
+    .form-stack label {
+      display: block;
+      margin-top: 0.75rem;
+    }
+    .form-stack input,
+    .form-stack select,
+    .form-stack textarea {
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #121821;
+      color: var(--text);
+    }
+    .form-stack .btn {
+      margin-top: 1rem;
+      padding: 0.55rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #1a1408;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .errorlist {
+      color: #f5a8a8;
+      list-style: none;
+      padding: 0;
+      margin: 0.35rem 0 0;
+      font-size: 0.9rem;
+    }
+    .helptext {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0.25rem 0 0;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+    nav a:hover {
+      color: var(--accent);
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      background: var(--accent);
+      color: #1a1408;
+    }
+    .btn:hover {
+      filter: brightness(1.08);
+      color: #1a1408;
+    }
+    .btn-outline {
+      background: transparent;
+      border-color: var(--line);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .nav-spacer {
+      flex: 1;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="{% url 'cinema:movie_list' %}"><span style="font-size: 20px;">Phim</span></a>
+      {% if user.is_authenticated %}
+        <span class="nav-spacer"></span>
+        <span>Xin chào, {{ user.username }}</span>
+        {% if user.is_staff %}
+          <a href="/admin/">Admin</a>
+        {% endif %}
+        <form method="post" action="{% url 'cinema:logout' %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline">Đăng xuất</button>
+        </form>
+      {% else %}
+        <span class="nav-spacer"></span>
+        <a class="btn btn-outline" href="{% url 'cinema:login' %}">Đăng nhập</a>
+        <a class="btn" href="{% url 'cinema:register' %}">Đăng ký</a>
+      {% endif %}
+    </nav>
+    
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

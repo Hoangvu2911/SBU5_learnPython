@@ -146,3 +146,7 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+LOGIN_URL = 'cinema:login'
+LOGIN_REDIRECT_URL = 'cinema:movie_list'
+LOGOUT_REDIRECT_URL = 'cinema:movie_list'

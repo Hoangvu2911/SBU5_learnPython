@@ -1,0 +1,18 @@
+{% extends "cinema/base.html" %}
+{% block title %}Đăng ký{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h1>Đăng ký</h1>
+  <form method="post" class="form-stack" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+    {% for field in form %}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {{ field.errors }}
+      {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
+    {% endfor %}
+    <button type="submit" class="btn">Đăng ký</button>
+  </form>
+</div>
+{% endblock %}
