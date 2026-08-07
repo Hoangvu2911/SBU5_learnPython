@@ -1,0 +1,10 @@
+.git
+.gitignore
+venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+myproject/db.sqlite3
+myproject/SPEC.md
+myproject/.env
+*.md
