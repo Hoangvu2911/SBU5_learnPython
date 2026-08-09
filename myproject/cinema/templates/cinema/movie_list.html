@@ -9,13 +9,15 @@
     <ul class="grid">
       {% for movie in movies %}
         <li class="card">
-          <h2 class="title">{{ movie.title }}</h2>
-          <div class="meta">
-            <span class="chip">{{ movie.genre }}</span>
-            <span>{{ movie.duration_minutes }} phút</span>
-            <span>★ {{ movie.rating }}</span>
-            <span>{{ movie.director }}</span>
-          </div>
+          <a href="{% url 'cinema:movie_detail' movie.pk %}" style="text-decoration:none; color:inherit;">
+            <h2 class="title">{{ movie.title }}</h2>
+            <div class="meta">
+              <span class="chip">{{ movie.genre }}</span>
+              <span>{{ movie.duration_minutes }} phút</span>
+              <span>★ {{ movie.rating }}</span>
+              <span>{{ movie.director }}</span>
+            </div>
+          </a>
         </li>
       {% endfor %}
     </ul>

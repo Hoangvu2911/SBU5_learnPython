@@ -1,0 +1,26 @@
+{% extends "cinema/base.html" %}
+{% block title %}Quản lý phim{% endblock %}
+{% block content %}
+  <h1>Phim</h1>
+  <p><a class="btn" href="{% url 'cinema:manage_movie_create' %}">Thêm phim</a></p>
+  <ul class="grid">
+    {% for m in movies %}
+      <li class="card">
+        <h2 class="title">{{ m.title }}</h2>
+        <div class="meta">
+          <span>{{ m.duration_minutes }} phút</span>
+          <span>{% if m.is_active %}Hiện{% else %}Ẩn{% endif %}</span>
+        </div>
+        <a href="{% url 'cinema:manage_movie_edit' m.pk %}">Sửa</a>
+        <form method="post" action="{% url 'cinema:manage_movie_toggle' m.pk %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline">
+            {% if m.is_active %}Ẩn{% else %}Hiện{% endif %}
+          </button>
+        </form>
+      </li>
+    {% empty %}
+      <p class="empty">Chưa có phim.</p>
+    {% endfor %}
+  </ul>
+{% endblock %}

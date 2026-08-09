@@ -172,10 +172,11 @@
     <nav>
       <a href="{% url 'cinema:movie_list' %}"><span style="font-size: 20px;">Phim</span></a>
       {% if user.is_authenticated %}
+        <a href="{% url 'cinema:my_tickets' %}">Vé của tôi</a>
         <span class="nav-spacer"></span>
         <span>Xin chào, {{ user.username }}</span>
         {% if user.is_staff %}
-          <a href="/admin/">Admin</a>
+          <a href="{% url 'cinema:manage_home' %}">Quản lý</a>
         {% endif %}
         <form method="post" action="{% url 'cinema:logout' %}" style="display:inline">
           {% csrf_token %}

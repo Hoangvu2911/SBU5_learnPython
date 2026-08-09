@@ -1,0 +1,19 @@
+{% extends "cinema/base.html" %}
+{% block title %}Quản lý diễn viên{% endblock %}
+{% block content %}
+  <h1>Diễn viên</h1>
+  <p><a class="btn" href="{% url 'cinema:manage_actor_create' %}">Thêm diễn viên</a></p>
+  <ul class="grid">
+    {% for a in actors %}
+      <li class="card">
+        <h2 class="title">{{ a.name }}</h2>
+        <div class="meta">
+          <span>{{ a.bio|default:"Không có bio" }}</span>
+        </div>
+        <a href="{% url 'cinema:manage_actor_edit' a.pk %}">Sửa</a>
+      </li>
+    {% empty %}
+      <p class="empty">Chưa có diễn viên.</p>
+    {% endfor %}
+  </ul>
+{% endblock %}

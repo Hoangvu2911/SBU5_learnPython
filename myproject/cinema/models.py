@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q, UniqueConstraint
+from django.utils import timezone
 
 # Create your models here.
 
@@ -87,6 +88,10 @@ class Showtime(models.Model):
         constraints = [
             UniqueConstraint(fields=["room", "start_at"], name="uniq_room_start_at"),
         ]
+
+    def is_bookable(self, now=None) -> bool:
+        now = now or timezone.now()
+        return self.status != self.Status.CANCELLED and self.start_at > now
 
     def __str__(self):
         return f"{self.movie.title} - {self.room.name} - {self.start_at}"

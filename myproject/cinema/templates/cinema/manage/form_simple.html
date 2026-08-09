@@ -1,0 +1,18 @@
+{% extends "cinema/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="form-card">
+    <h1>{{ title }}</h1>
+    <form method="post" class="form-stack" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+        {% for field in form %}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {{ field.errors }}
+        {% endfor %}
+        <button type="submit" class="btn">Lưu</button>
+        <a class="btn btn-outline" href="{% url cancel_url %}">Hủy</a>
+    </form>
+</div>
+{% endblock %}

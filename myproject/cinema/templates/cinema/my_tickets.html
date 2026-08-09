@@ -1,0 +1,32 @@
+{% extends "cinema/base.html" %}
+{% block title %}Vé của tôi{% endblock %}
+{% block content %}
+  <h1>Vé của tôi</h1>
+  {% if tickets %}
+    <ul class="grid">
+      {% for t in tickets %}
+        <li class="card">
+          <h2 class="title">{{ t.showtime.movie.title }} · {{ t.seat }}</h2>
+          <div class="meta">
+            <span>{{ t.showtime.room.name }}</span>
+            <span>{{ t.showtime.start_at }}</span>
+            <span>{{ t.price }}</span>
+            <span class="chip">{{ t.status }}</span>
+          </div>
+          {% if t.status == "pending" %}
+            <a class="btn" href="{% url 'cinema:ticket_pay' t.pk %}">Thanh toán</a>
+          {% endif %}
+          {% if t.status == "pending" or t.status == "booked" %}
+            <form method="post" action="{% url 'cinema:ticket_cancel' t.pk %}" style="display:inline"
+                  onsubmit="return confirm('Hủy vé này?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline">Hủy vé</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Chưa có vé.</p>
+  {% endif %}
+{% endblock %}

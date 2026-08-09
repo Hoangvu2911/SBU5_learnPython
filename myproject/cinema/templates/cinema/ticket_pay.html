@@ -1,0 +1,19 @@
+{% extends "cinema/base.html" %}
+{% block title %}Thanh toán{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h1>Thanh toán giả lập</h1>
+  <p class="sub">{{ ticket.showtime.movie.title }} · ghế {{ ticket.seat }} · {{ ticket.price }}</p>
+  <p>Status hiện tại: <span class="chip">{{ ticket.status }}</span></p>
+  {% if ticket.status == "pending" %}
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn">Xác nhận thanh toán</button>
+      <a class="btn btn-outline" href="{% url 'cinema:my_tickets' %}">Để sau</a>
+    </form>
+  {% else %}
+    <p class="helptext">Vé không còn pending (hết hạn hoặc đã xử lý).</p>
+    <a class="btn" href="{% url 'cinema:my_tickets' %}">Về vé của tôi</a>
+  {% endif %}
+</div>
+{% endblock %}

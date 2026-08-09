@@ -1,0 +1,19 @@
+{% extends "cinema/base.html" %}
+{% block title %}Quản lý phòng{% endblock %}
+{% block content %}
+  <h1>Phòng</h1>
+  <p><a class="btn" href="{% url 'cinema:manage_room_create' %}">Thêm phòng</a></p>
+  <ul class="grid">
+    {% for r in rooms %}
+      <li class="card">
+        <h2 class="title">{{ r.name }}</h2>
+        <div class="meta">
+          <span>{{ r.capacity }} chỗ</span>
+        </div>
+        <a href="{% url 'cinema:manage_room_edit' r.pk %}">Sửa</a>
+      </li>
+    {% empty %}
+      <p class="empty">Chưa có phòng.</p>
+    {% endfor %}
+  </ul>
+{% endblock %}

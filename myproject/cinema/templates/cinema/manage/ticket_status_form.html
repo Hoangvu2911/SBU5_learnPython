@@ -1,0 +1,23 @@
+{% extends "cinema/base.html" %}
+{% block title %}Đổi status vé{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h1>Vé #{{ ticket.pk }}</h1>
+  <p class="sub">
+    {{ ticket.customer.username }} · ghế {{ ticket.seat }} ·
+    {{ ticket.showtime.movie.title }} · {{ ticket.price }}
+  </p>
+  <p class="helptext">Chỉ được đổi status. Không đổi ghế / suất / giá / khách.</p>
+  <form method="post" class="form-stack" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+    {% for field in form %}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {{ field.errors }}
+    {% endfor %}
+    <button type="submit" class="btn">Lưu</button>
+    <a class="btn btn-outline" href="{% url 'cinema:manage_ticket_list' %}">Hủy</a>
+  </form>
+</div>
+{% endblock %}

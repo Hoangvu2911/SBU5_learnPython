@@ -1,14 +1,18 @@
-from django.shortcuts import render, redirect
-from .models import Movie
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Movie, Showtime, Ticket
 from django.contrib.auth import login
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib import messages
-from .forms import CustomerRegistrationForm
+from .forms import CustomerRegistrationForm, SeatBookForm
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from .booking import book, BookingError, seat_map, cleanup_pending, pay, cancel_ticket
 # Create your views here.
 
 def movie_list(request):
     movies = Movie.objects.filter(is_active=True).order_by("release_date")
     return render(request, "cinema/movie_list.html", {"movies": movies})
+
 class CinemaLoginView(LoginView):
     template_name = "cinema/login.html"
     redirect_authenticated_user = True
@@ -29,3 +33,93 @@ def register(request):
     else:
         form = CustomerRegistrationForm()
     return render(request, "cinema/register.html", {"form": form})
+
+def movie_detail(request, pk):
+    movie = get_object_or_404(Movie, pk=pk, is_active=True)
+    now = timezone.now()
+    showtimes = (
+        movie.showtimes.filter(
+            status=Showtime.Status.SCHEDULED,
+            start_at__gt=now,
+        )
+        .select_related("room")
+        .order_by("start_at")
+    )
+    cast = movie.movie_actors.select_related("actor")
+    return  render(request, "cinema/movie_detail.html", {
+        "movie": movie,
+        "showtimes": showtimes,
+        "cast": cast,
+    })
+
+
+@login_required
+def showtime_seats(request, pk):
+    showtime = get_object_or_404(
+        Showtime.objects.select_related("movie", "room"),
+        pk=pk,
+    )
+    cleanup_pending(showtime)
+
+    if request.method == "POST":
+        form = SeatBookForm(request.POST)
+        if form.is_valid():
+            try:
+                ticket = book(request.user, showtime, form.cleaned_data["seat"])
+                messages.success(request, f"Đã giữ ghế {ticket.seat} thanh toán trong 10 phút.")
+                return redirect("cinema:my_tickets")
+            except BookingError as e:
+                messages.error(request, str(e))
+    else:
+        form = SeatBookForm()
+    return render(request, "cinema/seats.html", {
+        "showtime": showtime,
+        "seat_map": seat_map(showtime),
+        "form": form,
+    })
+
+@login_required
+def my_tickets(request):
+    tickets = (
+        Ticket.objects.filter(customer=request.user)
+        .select_related("showtime", "showtime__movie", "showtime__room")
+        .order_by("-created_at")
+    )
+    return render(request, "cinema/my_tickets.html", {"tickets": tickets})
+
+
+@login_required
+def ticket_pay(request, pk):
+    ticket = get_object_or_404(
+        Ticket.objects.select_related("showtime", "showtime__movie", "showtime__room"),
+        pk=pk,
+        customer=request.user,
+    )
+    cleanup_pending(ticket.showtime)
+    ticket.refresh_from_db()
+    
+    if request.method == "POST":
+        try:
+            pay(request.user, ticket)
+            messages.success(request, f"Đã thanh toán ghế {ticket.seat}.")
+            return redirect("cinema:my_tickets")
+        except BookingError as e:
+            messages.error(request, str(e))
+            return redirect("cinema:my_tickets")
+    return render(request, "cinema/ticket_pay.html", {"ticket": ticket})
+
+
+@login_required
+def ticket_cancel(request, pk):
+    ticket = get_object_or_404(
+        Ticket.objects.select_related("showtime"),
+        pk=pk,
+        customer=request.user,
+    )
+    if request.method == "POST":
+        try:
+            cancel_ticket(request.user, ticket)
+            messages.success(request, f"Đã hủy ghế {ticket.seat}.")
+        except BookingError as e:
+            messages.error(request, str(e))
+    return redirect("cinema:my_tickets")

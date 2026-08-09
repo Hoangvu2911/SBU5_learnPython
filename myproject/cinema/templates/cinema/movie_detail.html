@@ -1,0 +1,39 @@
+{% extends "cinema/base.html" %}
+{% block title %}{{ movie.title }}{% endblock %}
+{% block content %}
+  <header>
+    <h1>{{ movie.title }}</h1>
+    <p class="sub">{{ movie.genre }} · {{ movie.duration_minutes }} phút · ★ {{ movie.rating }} · {{ movie.director }}</p>
+  </header>
+  <p>{{ movie.description }}</p>
+
+  {% if cast %}
+    <p class="meta">
+      {% for ma in cast %}
+        <span class="chip">{{ ma.actor.name }}</span>
+      {% endfor %}
+    </p>
+  {% endif %}
+
+  <h2>Lịch chiếu</h2>
+  {% if showtimes %}
+    <ul class="grid">
+      {% for s in showtimes %}
+        <li class="card">
+          <h2 class="title">{{ s.room.name }}</h2>
+          <div class="meta">
+            <span>{{ s.start_at }}</span>
+            <span>{{ s.base_price }}</span>
+          </div>
+          {% if user.is_authenticated %}
+            <a class="btn" href="{% url 'cinema:showtime_seats' s.pk %}">Chọn ghế</a>
+          {% else %}
+            <a class="btn" href="{% url 'cinema:login' %}?next={% url 'cinema:showtime_seats' s.pk %}">Đăng nhập để đặt</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Chưa có suất bookable.</p>
+  {% endif %}
+{% endblock %}

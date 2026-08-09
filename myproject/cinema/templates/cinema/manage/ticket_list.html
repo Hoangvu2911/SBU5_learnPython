@@ -1,0 +1,42 @@
+{% extends "cinema/base.html" %}
+{% block title %}Vé{% endblock %}
+{% block content %}
+  <h1>Vé</h1>
+
+  <form method="get" class="form-stack" style="margin-bottom: 1.5rem;">
+    <label>Suất</label>
+    <select name="showtime">
+      <option value="">Tất cả</option>
+      {% for s in showtimes %}
+        <option value="{{ s.pk }}" {% if showtime_id == s.pk|stringformat:"s" %}selected{% endif %}>
+          {{ s.movie.title }} — {{ s.room.name }} — {{ s.start_at }}
+        </option>
+      {% endfor %}
+    </select>
+    <label>Trạng thái</label>
+    <select name="status">
+      <option value="">Tất cả</option>
+      {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn">Lọc</button>
+  </form>
+
+  <ul class="grid">
+    {% for t in tickets %}
+      <li class="card">
+        <h2 class="title">#{{ t.pk }} · {{ t.seat }}</h2>
+        <div class="meta">
+          <span>{{ t.customer.username }}</span>
+          <span>{{ t.showtime.movie.title }}</span>
+          <span>{{ t.price }}</span>
+          <span class="chip">{{ t.status }}</span>
+        </div>
+        <a href="{% url 'cinema:manage_ticket_edit_status' t.pk %}">Đổi status</a>
+      </li>
+    {% empty %}
+      <p class="empty">Chưa có vé. (User đặt ghế làm ở bước sau.)</p>
+    {% endfor %}
+  </ul>
+{% endblock %}

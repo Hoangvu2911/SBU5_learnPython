@@ -1,0 +1,12 @@
+{% extends "cinema/base.html" %}
+{% block title %}Quản lý{% endblock %}
+{% block content %}
+  <h1>Quản lý rạp</h1>
+  <ul>
+    <li><a href="{% url 'cinema:manage_movie_list' %}">Phim</a></li>
+    <li><a href="{% url 'cinema:manage_actor_list' %}">Diễn viên</a></li>
+    <li><a href="{% url 'cinema:manage_room_list' %}">Phòng</a></li>
+    <li><a href="{% url 'cinema:manage_showtime_list' %}">Suất chiếu</a></li>
+    <li><a href="{% url 'cinema:manage_ticket_list' %}">Vé</a></li>
+  </ul>
+{% endblock %}

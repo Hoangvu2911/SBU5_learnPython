@@ -1,0 +1,40 @@
+{% extends "cinema/base.html" %}
+{% block title %}Chọn ghế{% endblock %}
+{% block content %}
+<style>
+  .seat-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 2.6rem);
+    gap: 0.4rem;
+  }
+  .seat-grid button, .seat-grid span {
+    width: 2.6rem; height: 2.4rem; border-radius: 8px; text-align: center;
+    line-height: 2.4rem; font-size: 0.8rem; border: 1px solid var(--line);
+  }
+  .seat-grid button { background: #243044; color: var(--text); cursor: pointer; }
+  .seat-grid button:hover { border-color: var(--accent); color: var(--accent); }
+  .seat-held { background: #3d3420; color: var(--muted); }
+  .seat-booked { background: #2a1c22; color: #f5a8a8; }
+</style>
+
+<header>
+  <h1>{{ showtime.movie.title }}</h1>
+  <p class="sub">{{ showtime.room.name }} · {{ showtime.start_at }} · {{ showtime.base_price }}</p>
+</header>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="seat-grid">
+    {% for item in seat_map %}
+      {% if item.status == "available" %}
+        <button type="submit" name="seat" value="{{ item.seat }}">{{ item.seat }}</button>
+      {% elif item.status == "held" %}
+        <span class="seat-held">{{ item.seat }}</span>
+      {% else %}
+        <span class="seat-booked">{{ item.seat }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+</form>
+<p class="helptext">Xanh: trống · vàng: đang giữ (pending) · đỏ: đã thanh toán. Chọn 1 ghế.</p>
+{% endblock %}
