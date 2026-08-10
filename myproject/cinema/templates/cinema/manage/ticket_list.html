@@ -36,7 +36,8 @@
         <a href="{% url 'cinema:manage_ticket_edit_status' t.pk %}">Đổi status</a>
       </li>
     {% empty %}
-      <p class="empty">Chưa có vé. (User đặt ghế làm ở bước sau.)</p>
+      <p class="empty">Chưa có vé.</p>
     {% endfor %}
   </ul>
+  {% include "cinema/includes/pagination.html" %}
 {% endblock %}

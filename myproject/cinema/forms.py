@@ -155,7 +155,7 @@ class ShowtimeForm(forms.ModelForm):
 
         qs = Showtime.objects.filter(
             room=room,
-            status=Showtime.Status.SCHEDULED,
+            status__in=[Showtime.Status.SCHEDULED, Showtime.Status.ONGOING],
             start_at__lt=end_at,
             end_at__gt=start_at,
         )

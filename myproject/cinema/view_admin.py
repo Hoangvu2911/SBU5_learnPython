@@ -3,7 +3,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Movie, Actor, Room, Showtime, Ticket
 from .forms import MovieForm, MovieActorFormSet, ActorForm, RoomForm, ShowtimeForm, TicketStatusForm
-from .booking import cancel_showtime
+from .booking import cancel_showtime, sync_showtime_status
+from django.core.paginator import Paginator
 
 
 def staff_required(view):
@@ -159,11 +160,31 @@ def room_edit(request, pk):
     
 @staff_required
 def showtime_list(request):
-    showtimes = (
-        Showtime.objects.select_related("movie", "room")
-        .order_by("-start_at")
-    )
-    return render(request, "cinema/manage/showtime_list.html", {"showtimes": showtimes})
+    showtimes = Showtime.objects.select_related("movie", "room").order_by("-start_at")
+    for st in showtimes:
+        sync_showtime_status(st)
+
+    movie_id = (request.GET.get("movie") or "").strip()
+    status = (request.GET.get("status") or "").strip()
+    if status:
+        showtimes = showtimes.filter(status=status)
+    if movie_id:
+        showtimes = showtimes.filter(movie_id=movie_id)
+
+    paginator = Paginator(showtimes, 9)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    query = request.GET.copy()
+    query.pop("page", None)
+
+    return render(request, "cinema/manage/showtime_list.html", {
+        "showtimes": page_obj.object_list,
+        "page_obj": page_obj,
+        "query": query.urlencode(),
+        "movies": Movie.objects.order_by("title"),
+        "status_choices": Showtime.Status.choices,
+        "movie_id": movie_id,
+        "status": status,
+    })
 
 
 @staff_required
@@ -186,6 +207,7 @@ def showtime_create(request):
 @staff_required
 def showtime_edit(request, pk):
     showtime = get_object_or_404(Showtime, pk=pk)
+    sync_showtime_status(showtime)
     if request.method == "POST":
         form = ShowtimeForm(request.POST, instance=showtime)
         if form.is_valid():
@@ -204,12 +226,18 @@ def showtime_edit(request, pk):
 @staff_required
 def showtime_cancel(request, pk):
     showtime = get_object_or_404(Showtime, pk=pk)
+    sync_showtime_status(showtime)
     if request.method == "POST":
         if showtime.status == Showtime.Status.CANCELLED:
             messages.info(request, "Suất đã hủy trước đó.")
+        elif showtime.status == Showtime.Status.COMPLETED:
+            messages.info(request, "Suất đã hoàn thành.")
         else:
             n = cancel_showtime(showtime)
-            messages.success(request, f"Đã hủy suất. {n} vé active → cancelled.")
+            if showtime.status == Showtime.Status.CANCELLED:
+                messages.success(request, f"Đã hủy suất. {n} vé active → cancelled.")
+            else:
+                messages.warning(request, f"Không thể hủy suất. {n} vé active → cancelled.")
     return redirect("cinema:manage_showtime_list")
 
 
@@ -226,8 +254,15 @@ def ticket_list(request):
     if status:
         tickets = tickets.filter(status=status)
 
+    paginator = Paginator(tickets, 9)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    query = request.GET.copy()
+    query.pop("page", None)
+
     return render(request, "cinema/manage/ticket_list.html", {
         "tickets": tickets,
+        "page_obj": page_obj,
+        "query": query.urlencode(),
         "showtimes": Showtime.objects.select_related("movie", "room").order_by("-start_at"),
         "status_choices": Ticket.Status.choices,
         "showtime_id": showtime_id or "",

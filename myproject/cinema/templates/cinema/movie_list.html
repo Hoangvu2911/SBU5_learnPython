@@ -5,6 +5,23 @@
     <p class="sub">Các phim đang chiếu</p>
   </header>
 
+  <form method="get" class="toolbar">
+    <div>
+      <label for="q">Tìm kiếm:</label>
+      <input type="search" name="q" value="{{ q }}" placeholder="Tên / đạo diễn / thể loại">
+    </div>
+    <div>
+      <label for="genre">Thể loại:</label>
+      <select name="genre">
+        <option value="">Tất cả thể loại</option>
+        {% for g in genres %}
+          <option value="{{ g }}" {% if genre == g %}selected{% endif %}>{{ g }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn">Lọc</button>
+  </form>
+
   {% if movies %}
     <ul class="grid">
       {% for movie in movies %}
@@ -21,6 +38,7 @@
         </li>
       {% endfor %}
     </ul>
+    {% include "cinema/includes/pagination.html" %}
   {% else %}
     <p class="empty">Không có phim nào. Hãy chạy seed hoặc bật <code>is_active</code>.</p>
   {% endif %}

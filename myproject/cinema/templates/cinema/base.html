@@ -165,6 +165,42 @@
       flex: 1;
     }
 
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: end;
+      margin-bottom: 1.5rem;
+    }
+    .toolbar label { display: block; color: var(--muted); font-size: 0.85rem; }
+    .toolbar input, .toolbar select {
+      margin-top: 0.3rem;
+      padding: 0.45rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #121821;
+      color: var(--text);
+    }
+    .pagination {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 1.5rem;
+      align-items: center;
+    }
+    .pagination a, .pagination span {
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      text-decoration: none;
+    }
+    .pagination .current {
+      background: var(--accent);
+      color: #1a1408;
+      border-color: transparent;
+    }
+
   </style>
 </head>
 <body>
@@ -177,6 +213,7 @@
         <span>Xin chào, {{ user.username }}</span>
         {% if user.is_staff %}
           <a href="{% url 'cinema:manage_home' %}">Quản lý</a>
+          <a href="/admin/">Admin</a>
         {% endif %}
         <form method="post" action="{% url 'cinema:logout' %}" style="display:inline">
           {% csrf_token %}

@@ -65,6 +65,8 @@ class Room(models.Model):
 class Showtime(models.Model):
     class Status(models.TextChoices):
         SCHEDULED = "scheduled", "Scheduled"
+        ONGOING = "ongoing", "Ongoing"
+        COMPLETED = "completed", "Completed"
         CANCELLED = "cancelled", "Cancelled"
 
     movie = models.ForeignKey(Movie, on_delete=models.RESTRICT, related_name="showtimes")
@@ -90,8 +92,7 @@ class Showtime(models.Model):
         ]
 
     def is_bookable(self, now=None) -> bool:
-        now = now or timezone.now()
-        return self.status != self.Status.CANCELLED and self.start_at > now
+        return self.status == self.Status.SCHEDULED
 
     def __str__(self):
         return f"{self.movie.title} - {self.room.name} - {self.start_at}"

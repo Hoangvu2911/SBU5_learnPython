@@ -3,14 +3,30 @@ from django.conf import settings
 from django.utils import timezone
 from django.db import transaction, IntegrityError
 from .models import Ticket, Showtime
-from django.db import transaction
 from .seats import generate_seats, is_valid_seat
 
 
+def sync_showtime_status(showtime, now=None):
+    now = now or timezone.now()
+    if showtime.status == Showtime.Status.CANCELLED:
+        return showtime
+    if now >= showtime.end_at:
+        new_status = Showtime.Status.COMPLETED
+    elif now >= showtime.start_at:
+        new_status = Showtime.Status.ONGOING
+    else:
+        new_status = Showtime.Status.SCHEDULED
+    if showtime.status != new_status:
+        showtime.status = new_status
+        showtime.save(update_fields=["status", "updated_at"])
+    return showtime
+
+
 def cleanup_pending(showtime) -> int:
+    sync_showtime_status(showtime)
     now = timezone.now()
     ttl = timedelta(seconds=settings.SEAT_HOLD_TTL_SECONDS)
-    z = Ticket.objects.filter(
+    expired_qs = Ticket.objects.filter(
         showtime=showtime,
         status=Ticket.Status.PENDING,
         created_at__lte=now - ttl
@@ -28,6 +44,9 @@ def cleanup_pending(showtime) -> int:
 
 @transaction.atomic
 def cancel_showtime(showtime) -> int:
+    sync_showtime_status(showtime)
+    if showtime.status not in (Showtime.Status.SCHEDULED, Showtime.Status.ONGOING):
+        return 0
     showtime.status = Showtime.Status.CANCELLED
     showtime.save(update_fields=["status", "updated_at"])
     return Ticket.objects.filter(

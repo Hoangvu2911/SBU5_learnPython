@@ -6,19 +6,55 @@ from django.contrib import messages
 from .forms import CustomerRegistrationForm, SeatBookForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from .booking import book, BookingError, seat_map, cleanup_pending, pay, cancel_ticket
+from .booking import book, BookingError, seat_map, cleanup_pending, pay, cancel_ticket, sync_showtime_status
+from django.core.paginator import Paginator
+from django.db.models import Q
 # Create your views here.
 
+
 def movie_list(request):
+    q = request.GET.get("q", "").strip()
+    genre = request.GET.get("genre", "").strip()
+
     movies = Movie.objects.filter(is_active=True).order_by("release_date")
-    return render(request, "cinema/movie_list.html", {"movies": movies})
+    if q:
+        movies = movies.filter(
+            Q(title__icontains=q) | Q(director__icontains=q) | Q(genre__icontains=q)
+        )
+    if genre:
+        movies = movies.filter(genre=genre)
+
+    genres = (
+        Movie.objects.filter(is_active=True)
+        .values_list("genre", flat=True)
+        .distinct()
+        .order_by("genre")
+    )
+
+    paginator = Paginator(movies, 9)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    query = request.GET.copy()
+    query.pop("page", None)
+
+    return render(request, "cinema/movie_list.html", {
+        "page_obj": page_obj,
+        "movies": page_obj.object_list,
+        "q": q,
+        "genre": genre,
+        "genres": genres,
+        "query": query.urlencode(),
+    })
+
 
 class CinemaLoginView(LoginView):
     template_name = "cinema/login.html"
     redirect_authenticated_user = True
 
+
 class CinemaLogoutView(LogoutView):
     next_page = "cinema:movie_list"
+
 
 def register(request):
     if request.user.is_authenticated:
@@ -34,17 +70,14 @@ def register(request):
         form = CustomerRegistrationForm()
     return render(request, "cinema/register.html", {"form": form})
 
+
 def movie_detail(request, pk):
     movie = get_object_or_404(Movie, pk=pk, is_active=True)
     now = timezone.now()
-    showtimes = (
-        movie.showtimes.filter(
-            status=Showtime.Status.SCHEDULED,
-            start_at__gt=now,
-        )
-        .select_related("room")
-        .order_by("start_at")
-    )
+    showtimes = list(movie.showtimes.select_related("room").order_by("start_at"))
+    for showtime in showtimes:
+        sync_showtime_status(showtime)
+    showtimes = [showtime for showtime in showtimes if showtime.status == Showtime.Status.SCHEDULED]
     cast = movie.movie_actors.select_related("actor")
     return  render(request, "cinema/movie_detail.html", {
         "movie": movie,
@@ -78,14 +111,37 @@ def showtime_seats(request, pk):
         "form": form,
     })
 
+
 @login_required
 def my_tickets(request):
+    q = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+
     tickets = (
         Ticket.objects.filter(customer=request.user)
         .select_related("showtime", "showtime__movie", "showtime__room")
         .order_by("-created_at")
     )
-    return render(request, "cinema/my_tickets.html", {"tickets": tickets})
+    if q:
+        tickets = tickets.filter(showtime__movie__title__icontains=q)
+    if status:
+        tickets = tickets.filter(status=status)
+
+    paginator = Paginator(tickets, 10)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    query = request.GET.copy()
+    query.pop("page", None)
+
+    return render(request, "cinema/my_tickets.html", {
+        "page_obj": page_obj,
+        "tickets": page_obj.object_list,
+        "q": q,
+        "status": status,
+        "status_choices": Ticket.Status.choices,
+        "query": query.urlencode(),
+    })
+
 
 
 @login_required

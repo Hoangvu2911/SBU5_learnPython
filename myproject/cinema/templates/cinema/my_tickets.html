@@ -2,6 +2,22 @@
 {% block title %}Vé của tôi{% endblock %}
 {% block content %}
   <h1>Vé của tôi</h1>
+  <form method="get" class="toolbar">
+    <div>
+      <label for="q">Tìm kiếm:</label>
+      <input id="q" type="search" name="q" value="{{ q }}" placeholder="Tên phim">
+    </div>
+    <div>
+      <label for="status">Trạng thái:</label>
+      <select id="status" name="status">
+        <option value="">Tất cả</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn">Lọc</button>
+  </form>
   {% if tickets %}
     <ul class="grid">
       {% for t in tickets %}
@@ -26,6 +42,7 @@
         </li>
       {% endfor %}
     </ul>
+    {% include "cinema/includes/pagination.html" %}
   {% else %}
     <p class="empty">Chưa có vé.</p>
   {% endif %}

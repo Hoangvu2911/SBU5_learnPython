@@ -3,6 +3,23 @@
 {% block content %}
   <h1>Suất chiếu</h1>
   <p><a class="btn" href="{% url 'cinema:manage_showtime_create' %}">Thêm suất</a></p>
+  <form method="get" class="form-stack" style="margin-bottom: 1.5rem;">
+    <label>Phim</label>
+    <select name="movie">
+      <option value="">Tất cả</option>
+      {% for m in movies %}
+        <option value="{{ m.pk }}" {% if movie_id == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.title }}</option>
+      {% endfor %}
+    </select>
+    <label>Trạng thái</label>
+    <select name="status">
+      <option value="">Tất cả</option>
+      {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn">Lọc</button>
+  </form>
   <ul class="grid">
     {% for s in showtimes %}
       <li class="card">
@@ -15,7 +32,7 @@
           {% if s.is_bookable %}<span>Bookable</span>{% endif %}
         </div>
         <a href="{% url 'cinema:manage_showtime_edit' s.pk %}">Sửa</a>
-        {% if s.status == "scheduled" %}
+        {% if s.status == "scheduled" or s.status == "ongoing" %}
           <form method="post" action="{% url 'cinema:manage_showtime_cancel' s.pk %}" style="display:inline"
                 onsubmit="return confirm('Hủy suất và vé active?');">
             {% csrf_token %}
@@ -27,4 +44,5 @@
       <p class="empty">Chưa có suất.</p>
     {% endfor %}
   </ul>
+  {% include "cinema/includes/pagination.html" %}
 {% endblock %}
