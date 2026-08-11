@@ -31,20 +31,7 @@ def movie_list(request):
         .order_by("genre")
     )
 
-    paginator = Paginator(movies, 9)
-    page_obj = paginator.get_page(request.GET.get("page"))
-
-    query = request.GET.copy()
-    query.pop("page", None)
-
-    return render(request, "cinema/movie_list.html", {
-        "page_obj": page_obj,
-        "movies": page_obj.object_list,
-        "q": q,
-        "genre": genre,
-        "genres": genres,
-        "query": query.urlencode(),
-    })
+    return render(request, "cinema/movie_list.html", {"genres": genres})
 
 
 class CinemaLoginView(LoginView):
@@ -72,44 +59,12 @@ def register(request):
 
 
 def movie_detail(request, pk):
-    movie = get_object_or_404(Movie, pk=pk, is_active=True)
-    now = timezone.now()
-    showtimes = list(movie.showtimes.select_related("room").order_by("start_at"))
-    for showtime in showtimes:
-        sync_showtime_status(showtime)
-    showtimes = [showtime for showtime in showtimes if showtime.status == Showtime.Status.SCHEDULED]
-    cast = movie.movie_actors.select_related("actor")
-    return  render(request, "cinema/movie_detail.html", {
-        "movie": movie,
-        "showtimes": showtimes,
-        "cast": cast,
-    })
+    return render(request, "cinema/movie_detail.html", {"movie_id": pk})
 
 
 @login_required
 def showtime_seats(request, pk):
-    showtime = get_object_or_404(
-        Showtime.objects.select_related("movie", "room"),
-        pk=pk,
-    )
-    cleanup_pending(showtime)
-
-    if request.method == "POST":
-        form = SeatBookForm(request.POST)
-        if form.is_valid():
-            try:
-                ticket = book(request.user, showtime, form.cleaned_data["seat"])
-                messages.success(request, f"Đã giữ ghế {ticket.seat} thanh toán trong 10 phút.")
-                return redirect("cinema:my_tickets")
-            except BookingError as e:
-                messages.error(request, str(e))
-    else:
-        form = SeatBookForm()
-    return render(request, "cinema/seats.html", {
-        "showtime": showtime,
-        "seat_map": seat_map(showtime),
-        "form": form,
-    })
+    return render(request, "cinema/seats.html", {"showtime_id": pk})
 
 
 @login_required
@@ -117,29 +72,10 @@ def my_tickets(request):
     q = request.GET.get("q", "").strip()
     status = request.GET.get("status", "").strip()
 
-    tickets = (
-        Ticket.objects.filter(customer=request.user)
-        .select_related("showtime", "showtime__movie", "showtime__room")
-        .order_by("-created_at")
-    )
-    if q:
-        tickets = tickets.filter(showtime__movie__title__icontains=q)
-    if status:
-        tickets = tickets.filter(status=status)
-
-    paginator = Paginator(tickets, 10)
-    page_obj = paginator.get_page(request.GET.get("page"))
-
-    query = request.GET.copy()
-    query.pop("page", None)
-
     return render(request, "cinema/my_tickets.html", {
-        "page_obj": page_obj,
-        "tickets": page_obj.object_list,
         "q": q,
         "status": status,
         "status_choices": Ticket.Status.choices,
-        "query": query.urlencode(),
     })
 
 

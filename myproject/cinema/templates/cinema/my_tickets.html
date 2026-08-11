@@ -1,8 +1,9 @@
 {% extends "cinema/base.html" %}
+{% load static %}
 {% block title %}Vé của tôi{% endblock %}
 {% block content %}
   <h1>Vé của tôi</h1>
-  <form method="get" class="toolbar">
+  <form id="ticket-filter" method="get" class="toolbar">
     <div>
       <label for="q">Tìm kiếm:</label>
       <input id="q" type="search" name="q" value="{{ q }}" placeholder="Tên phim">
@@ -12,38 +13,18 @@
       <select id="status" name="status">
         <option value="">Tất cả</option>
         {% for value, label in status_choices %}
-          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>
+            {{ label }}
+          </option>
         {% endfor %}
       </select>
     </div>
     <button type="submit" class="btn">Lọc</button>
   </form>
-  {% if tickets %}
-    <ul class="grid">
-      {% for t in tickets %}
-        <li class="card">
-          <h2 class="title">{{ t.showtime.movie.title }} · {{ t.seat }}</h2>
-          <div class="meta">
-            <span>{{ t.showtime.room.name }}</span>
-            <span>{{ t.showtime.start_at }}</span>
-            <span>{{ t.price }}</span>
-            <span class="chip">{{ t.status }}</span>
-          </div>
-          {% if t.status == "pending" %}
-            <a class="btn" href="{% url 'cinema:ticket_pay' t.pk %}">Thanh toán</a>
-          {% endif %}
-          {% if t.status == "pending" or t.status == "booked" %}
-            <form method="post" action="{% url 'cinema:ticket_cancel' t.pk %}" style="display:inline"
-                  onsubmit="return confirm('Hủy vé này?');">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-outline">Hủy vé</button>
-            </form>
-          {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-    {% include "cinema/includes/pagination.html" %}
-  {% else %}
-    <p class="empty">Chưa có vé.</p>
-  {% endif %}
+  <ul id="ticket-grid" class="grid"></ul>
+  <p id="ticket-empty" class="empty" hidden>Chưa có vé.</p>
+  <nav id="ticket-pagination" class="pagination"></nav>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'cinema/js/my_tickets.js' %}"></script>
 {% endblock %}

@@ -2,18 +2,19 @@
 {% block title %}Thanh toán{% endblock %}
 {% block content %}
 <div class="form-card">
-  <h1>Thanh toán giả lập</h1>
-  <p class="sub">{{ ticket.showtime.movie.title }} · ghế {{ ticket.seat }} · {{ ticket.price }}</p>
-  <p>Status hiện tại: <span class="chip">{{ ticket.status }}</span></p>
-  {% if ticket.status == "pending" %}
-    <form method="post">
-      {% csrf_token %}
-      <button type="submit" class="btn">Xác nhận thanh toán</button>
-      <a class="btn btn-outline" href="{% url 'cinema:my_tickets' %}">Để sau</a>
-    </form>
-  {% else %}
-    <p class="helptext">Vé không còn pending (hết hạn hoặc đã xử lý).</p>
-    <a class="btn" href="{% url 'cinema:my_tickets' %}">Về vé của tôi</a>
-  {% endif %}
+  <h1>Thanh toán (API)</h1>
+  <p class="sub" id="tp-sub"></p>
+  <p>Status hiện tại: <span class="chip" id="tp-status"></span></p>
+  <div id="tp-actions"></div>
+  <a class="btn btn-outline" id="tp-back" href="{% url 'cinema:my_tickets' %}">Về vé của tôi</a>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  {% load static %}
+  {% csrf_token %}
+  <script>
+    window.TICKET_ID = parseInt("{{ ticket.pk }}", 10);
+  </script>
+  <script src="{% static 'cinema/js/ticket_pay.js' %}"></script>
 {% endblock %}

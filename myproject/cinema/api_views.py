@@ -1,27 +1,39 @@
 from django.db.models import Q
+from .permissions import IsStaffOrReadOnly
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status as http_status
 
-from .booking import sync_showtime_status, seat_map, book, pay, cancel_ticket, BookingError
-from .models import Movie, Showtime, Ticket
-from .serializers import MovieSerializer, ShowtimeSerializer, TicketSerializer, RegisterSerializer, LoginSerializer, UserSerializer
+from .booking import sync_showtime_status, seat_map, book, pay, cancel_ticket, BookingError, cancel_showtime
+from .models import Movie, Room, Showtime, Ticket, Actor
+from .serializers import ( MovieSerializer, ShowtimeSerializer, TicketSerializer, RegisterSerializer, 
+LoginSerializer, UserSerializer, ActorSerializer, RoomSerializer)
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
+from .forms import TicketStatusForm
 
-class MovieViewSet(viewsets.ReadOnlyModelViewSet):
+class MovieViewSet(viewsets.ModelViewSet):
     serializer_class = MovieSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsStaffOrReadOnly]
+    http_method_names = ["get", "head", "options", "post", "patch"]
 
     def get_queryset(self):
+        is_staff = self.request.user.is_authenticated and self.request.user.is_staff
+        if self.action == "list" and is_staff:
+            order_by = "-created_at"
+        else:
+            order_by = "release_date"
+
         qs = (
-            Movie.objects.filter(is_active=True)
-            .prefetch_related("movie_actors__actor")
-            .order_by("release_date")
+            Movie.objects.prefetch_related("movie_actors__actor")
+            .order_by(order_by)
         )
+        if not is_staff:
+            qs = qs.filter(is_active=True)
+
         q = self.request.query_params.get("q", "").strip()
         genre = self.request.query_params.get("genre", "").strip()
         if q:
@@ -30,15 +42,31 @@ class MovieViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(genre=genre)
         return qs
 
-class ShowtimeViewSet(viewsets.ReadOnlyModelViewSet):
+    @action(detail=True, methods=["post"], url_path="toggle", permission_classes=[IsAdminUser])
+    def toggle(self, request, pk=None):
+        movie = self.get_object()
+        movie.is_active = not movie.is_active
+        movie.save(update_fields=["is_active", "updated_at"])
+        return Response(MovieSerializer(movie).data)
+
+class ShowtimeViewSet(viewsets.ModelViewSet):
     serializer_class = ShowtimeSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsStaffOrReadOnly]
+    http_method_names = ["get", "head", "options", "post", "patch"]
 
     def get_queryset(self):
+        is_staff = self.request.user.is_authenticated and self.request.user.is_staff
+        order_by = "-start_at" if (self.action == "list" and is_staff) else "start_at"
+
         qs = (
             Showtime.objects.select_related("movie", "room")
-            .order_by("start_at")
+            .order_by(order_by)
         )
+
+        if self.action == "list" and is_staff:
+            for st in qs:
+                sync_showtime_status(st)
+
         movie_id = self.request.query_params.get("movie", "").strip()
         status = self.request.query_params.get("status", "").strip()
         if movie_id:
@@ -74,24 +102,66 @@ class ShowtimeViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
         return Response(TicketSerializer(ticket).data, status=http_status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["post"], url_path="cancel", permission_classes=[IsAdminUser])
+    def cancel_showtime(self, request, pk=None):
+        showtime = self.get_object()
+        if showtime.status in (Showtime.Status.CANCELLED, Showtime.Status.COMPLETED):
+            return Response(
+                {"detail": f"Không thể hủy suất đã {showtime.status}."},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        n = cancel_showtime(showtime)
+        showtime.refresh_from_db()
+        return Response({
+            "showtime": ShowtimeSerializer(showtime).data,
+            "tickets_cancelled": n,
+        })
 
-class TicketViewSet(viewsets.ReadOnlyModelViewSet):
+class TicketViewSet(viewsets.ModelViewSet):
     serializer_class = TicketSerializer
     permission_classes = [IsAuthenticated]
-
+    http_method_names = ["get", "patch", "head", "options", "post"]
+    
     def get_queryset(self):
         qs = (
-            Ticket.objects.filter(customer=self.request.user)
-            .select_related("showtime", "showtime__movie", "showtime__room")
+            Ticket.objects.select_related("showtime", "showtime__movie", "showtime__room", "customer")
             .order_by("-created_at")
         )
+        user = self.request.user
+        is_staff = user.is_staff
+        mine = self.request.query_params.get("mine", "").strip().lower() in {"1", "true", "yes"}
+        if (not is_staff) or mine:
+            qs = qs.filter(customer=user)
+
         q = self.request.query_params.get("q", "").strip()
         status = self.request.query_params.get("status", "").strip()
+        showtime_id = self.request.query_params.get("showtime", "").strip()
         if q:
             qs = qs.filter(Q(showtime__movie__title__icontains=q))
         if status:
             qs = qs.filter(status=status)
+        if showtime_id:
+            qs = qs.filter(showtime_id=showtime_id)
         return qs
+
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {"detail": 'Method "POST" không được phép.'},
+            status=http_status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            return Response(
+                {"detail": "Chỉ quản trị viên mới có quyền thay đổi trạng thái vé."},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        ticket = self.get_object()
+        form = TicketStatusForm(data=request.data, instance=ticket)
+        if not form.is_valid():
+            return Response(form.errors, status=http_status.HTTP_400_BAD_REQUEST)
+        ticket = form.save()
+        return Response(TicketSerializer(ticket).data)
 
     @action(detail=True, methods=["post"], url_path="pay")
     def pay_ticket(self, request, pk=None):
@@ -151,3 +221,17 @@ class LogoutView(APIView):
         Token.objects.filter(user=request.user).delete()
         logout(request)
         return Response({"detail": "Logged out."})
+
+
+class ActorViewSet(viewsets.ModelViewSet):
+    serializer_class = ActorSerializer
+    permission_classes = [IsAdminUser]
+    queryset = Actor.objects.order_by("name")
+    http_method_names = ["get", "post", "head", "options", "patch"]
+
+
+class RoomViewSet(viewsets.ModelViewSet):
+    serializer_class = RoomSerializer
+    permission_classes = [IsAdminUser]
+    queryset = Room.objects.order_by("name")
+    http_method_names = ["get", "post", "head", "options", "patch"]

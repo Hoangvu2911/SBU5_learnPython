@@ -1,4 +1,5 @@
 {% extends "cinema/base.html" %}
+{% load static %}
 {% block title %}Vé{% endblock %}
 {% block content %}
   <h1>Vé</h1>
@@ -23,21 +24,11 @@
     <button type="submit" class="btn">Lọc</button>
   </form>
 
-  <ul class="grid">
-    {% for t in tickets %}
-      <li class="card">
-        <h2 class="title">#{{ t.pk }} · {{ t.seat }}</h2>
-        <div class="meta">
-          <span>{{ t.customer.username }}</span>
-          <span>{{ t.showtime.movie.title }}</span>
-          <span>{{ t.price }}</span>
-          <span class="chip">{{ t.status }}</span>
-        </div>
-        <a href="{% url 'cinema:manage_ticket_edit_status' t.pk %}">Đổi status</a>
-      </li>
-    {% empty %}
-      <p class="empty">Chưa có vé.</p>
-    {% endfor %}
-  </ul>
-  {% include "cinema/includes/pagination.html" %}
+  <ul id="ticket-grid" class="grid"></ul>
+  <p id="ticket-empty" class="empty" hidden>Chưa có vé.</p>
+  <nav id="ticket-pagination" class="pagination"></nav>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'cinema/js/manage_tickets.js' %}"></script>
 {% endblock %}

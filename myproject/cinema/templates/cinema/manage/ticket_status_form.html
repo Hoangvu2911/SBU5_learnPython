@@ -1,4 +1,5 @@
 {% extends "cinema/base.html" %}
+{% load static %}
 {% block title %}Đổi status vé{% endblock %}
 {% block content %}
 <div class="form-card">
@@ -20,4 +21,11 @@
     <a class="btn btn-outline" href="{% url 'cinema:manage_ticket_list' %}">Hủy</a>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    window.TICKET_ID = parseInt("{{ ticket.pk }}", 10);
+  </script>
+  <script src="{% static 'cinema/js/manage_ticket_status.js' %}"></script>
 {% endblock %}

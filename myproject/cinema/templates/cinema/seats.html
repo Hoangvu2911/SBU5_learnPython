@@ -1,4 +1,5 @@
 {% extends "cinema/base.html" %}
+{% load static %}
 {% block title %}Chọn ghế{% endblock %}
 {% block content %}
 <style>
@@ -18,23 +19,16 @@
 </style>
 
 <header>
-  <h1>{{ showtime.movie.title }}</h1>
-  <p class="sub">{{ showtime.room.name }} · {{ showtime.start_at }} · {{ showtime.base_price }}</p>
+  <h1 id = "seat-title"></h1>
+  <p class="sub" id = "seat-sub"></p>
 </header>
 
-<form method="post">
-  {% csrf_token %}
-  <div class="seat-grid">
-    {% for item in seat_map %}
-      {% if item.status == "available" %}
-        <button type="submit" name="seat" value="{{ item.seat }}">{{ item.seat }}</button>
-      {% elif item.status == "held" %}
-        <span class="seat-held">{{ item.seat }}</span>
-      {% else %}
-        <span class="seat-booked">{{ item.seat }}</span>
-      {% endif %}
-    {% endfor %}
-  </div>
-</form>
-<p class="helptext">Xanh: trống · vàng: đang giữ (pending) · đỏ: đã thanh toán. Chọn 1 ghế.</p>
+<div id = "seat-grid" class = "seat-grid"></div>
+<p id = "seat-error" class = "empty" hidden></p>
+<p class="helptext">Xanh: trống · vàng: pending · đỏ: booked.</p>
+{% endblock %}
+
+{% block scripts %}
+<script>window.SHOWTIME_ID = "{{ showtime_id }}";</script>
+<script src="{% static 'cinema/js/seats.js' %}"></script>
 {% endblock %}

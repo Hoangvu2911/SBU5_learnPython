@@ -3,7 +3,14 @@
 {% block content %}
 <div class="form-card">
     <h1>{{ title }}</h1>
-    <form method="post" class="form-stack" novalidate>
+    <form
+      method="post"
+      class="form-stack"
+      novalidate
+      data-api-url="{{ api_url|default:'' }}"
+      data-api-method="{{ api_method|default:'POST' }}"
+      data-cancel-url="{% if cancel_url %}{% url cancel_url %}{% else %}{% url 'cinema:movie_list' %}{% endif %}"
+    >
         {% csrf_token %}
         {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
         {% for field in form %}
@@ -15,4 +22,9 @@
         <a class="btn btn-outline" href="{% url cancel_url %}">Hủy</a>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  {% load static %}
+  <script src="{% static 'cinema/js/manage_form_simple.js' %}"></script>
 {% endblock %}

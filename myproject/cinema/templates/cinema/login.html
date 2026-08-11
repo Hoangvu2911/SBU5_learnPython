@@ -3,7 +3,7 @@
 {% block content %}
 <div class="form-card">
   <h1>Đăng nhập</h1>
-  <form method="post" class="form-stack" novalidate>
+  <form id="login-form" method="post" class="form-stack" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
     {% for field in form %}
@@ -15,4 +15,9 @@
     <button type="submit" class="btn">Đăng nhập</button>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  {% load static %}
+  <script src="{% static 'cinema/js/auth.js' %}"></script>
 {% endblock %}

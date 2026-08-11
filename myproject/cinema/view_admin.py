@@ -41,6 +41,9 @@ def movie_create(request):
         "form": form,
         "formset": formset,
         "title": "Thêm phim",
+        "api_url": "/api/movies/",
+        "api_method": "POST",
+        "cancel_url": "cinema:manage_movie_list",
     })
 
 
@@ -62,6 +65,9 @@ def movie_edit(request, pk):
         "form": form,
         "formset": formset,
         "title": f"Sửa: {movie.title}",
+        "api_url": f"/api/movies/{movie.pk}/",
+        "api_method": "PATCH",
+        "cancel_url": "cinema:manage_movie_list",
     })
 
 
@@ -95,6 +101,8 @@ def actor_create(request):
         "form": form,
         "title": "Thêm diễn viên",
         "cancel_url": "cinema:manage_actor_list",
+        "api_url": "/api/actors/",
+        "api_method": "POST",
     })
 
 
@@ -113,6 +121,8 @@ def actor_edit(request, pk):
         "form": form,
         "title": f"Sửa: {actor.name}",
         "cancel_url": "cinema:manage_actor_list",
+        "api_url": f"/api/actors/{actor.pk}/",
+        "api_method": "PATCH",
     })
     
 
@@ -137,6 +147,8 @@ def room_create(request):
         "form": form,
         "title": "Thêm phòng",
         "cancel_url": "cinema:manage_room_list",
+        "api_url": "/api/rooms/",
+        "api_method": "POST",
     })
 
 
@@ -155,6 +167,8 @@ def room_edit(request, pk):
         "form": form,
         "title": f"Sửa: {room.name}",
         "cancel_url": "cinema:manage_room_list",
+        "api_url": f"/api/rooms/{room.pk}/",
+        "api_method": "PATCH",
     })
     
     
@@ -201,6 +215,8 @@ def showtime_create(request):
         "form": form,
         "title": "Thêm suất",
         "cancel_url": "cinema:manage_showtime_list",
+        "api_url": "/api/showtimes/",
+        "api_method": "POST",
     })
     
 
@@ -220,6 +236,8 @@ def showtime_edit(request, pk):
         "form": form,
         "title": f"Sửa suất: {showtime}",
         "cancel_url": "cinema:manage_showtime_list",
+        "api_url": f"/api/showtimes/{showtime.pk}/",
+        "api_method": "PATCH",
     })
 
 

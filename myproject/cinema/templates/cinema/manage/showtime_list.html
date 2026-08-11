@@ -1,4 +1,5 @@
 {% extends "cinema/base.html" %}
+{% load static %}
 {% block title %}Suất chiếu{% endblock %}
 {% block content %}
   <h1>Suất chiếu</h1>
@@ -20,29 +21,11 @@
     </select>
     <button type="submit" class="btn">Lọc</button>
   </form>
-  <ul class="grid">
-    {% for s in showtimes %}
-      <li class="card">
-        <h2 class="title">{{ s.movie.title }}</h2>
-        <div class="meta">
-          <span>{{ s.room.name }}</span>
-          <span>{{ s.start_at }}</span>
-          <span>{{ s.base_price }}</span>
-          <span class="chip">{{ s.status }}</span>
-          {% if s.is_bookable %}<span>Bookable</span>{% endif %}
-        </div>
-        <a href="{% url 'cinema:manage_showtime_edit' s.pk %}">Sửa</a>
-        {% if s.status == "scheduled" or s.status == "ongoing" %}
-          <form method="post" action="{% url 'cinema:manage_showtime_cancel' s.pk %}" style="display:inline"
-                onsubmit="return confirm('Hủy suất và vé active?');">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-outline">Hủy suất</button>
-          </form>
-        {% endif %}
-      </li>
-    {% empty %}
-      <p class="empty">Chưa có suất.</p>
-    {% endfor %}
-  </ul>
-  {% include "cinema/includes/pagination.html" %}
+  <ul id="showtime-grid" class="grid"></ul>
+  <p id="showtime-empty" class="empty" hidden>Chưa có suất.</p>
+  <nav id="showtime-pagination" class="pagination"></nav>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'cinema/js/manage_showtimes.js' %}"></script>
 {% endblock %}

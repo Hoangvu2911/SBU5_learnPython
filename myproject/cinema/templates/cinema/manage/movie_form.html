@@ -3,7 +3,14 @@
 {% block content %}
 <div class="form-card" style="max-width: 560px;">
   <h1>{{ title }}</h1>
-  <form method="post" class="form-stack" novalidate>
+  <form
+    method="post"
+    class="form-stack"
+    novalidate
+    data-api-url="{{ api_url|default:'' }}"
+    data-api-method="{{ api_method|default:'POST' }}"
+    data-cancel-url="{% if cancel_url %}{% url cancel_url %}{% else %}{% url 'cinema:manage_movie_list' %}{% endif %}"
+  >
     {% csrf_token %}
     {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
     {% for field in form %}
@@ -28,7 +35,12 @@
     {% endfor %}
 
     <button type="submit" class="btn">Lưu</button>
-    <a class="btn btn-outline" href="{% url 'cinema:manage_movie_list' %}">Hủy</a>
+    <a class="btn btn-outline" href="{% if cancel_url %}{% url cancel_url %}{% else %}{% url 'cinema:manage_movie_list' %}{% endif %}">Hủy</a>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+  {% load static %}
+  <script src="{% static 'cinema/js/manage_movie_form.js' %}"></script>
 {% endblock %}

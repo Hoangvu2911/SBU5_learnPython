@@ -105,7 +105,7 @@ class RoomForm(forms.ModelForm):
 
 class ShowtimeForm(forms.ModelForm):
     start_at = forms.DateTimeField(
-        input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"],
+        input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"],
         widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
     )
 
