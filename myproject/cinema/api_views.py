@@ -7,7 +7,10 @@ from rest_framework import status as http_status
 
 from .booking import sync_showtime_status, seat_map, book, pay, cancel_ticket, BookingError
 from .models import Movie, Showtime, Ticket
-from .serializers import MovieSerializer, ShowtimeSerializer, TicketSerializer
+from .serializers import MovieSerializer, ShowtimeSerializer, TicketSerializer, RegisterSerializer, LoginSerializer, UserSerializer
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
 
 class MovieViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MovieSerializer
@@ -40,10 +43,12 @@ class ShowtimeViewSet(viewsets.ReadOnlyModelViewSet):
         status = self.request.query_params.get("status", "").strip()
         if movie_id:
             qs = qs.filter(movie_id=movie_id)
-        if status:
-            qs = qs.filter(status=status)
-        else:
-            qs = qs.filter(status=Showtime.Status.SCHEDULED)
+
+        if self.action == "list":
+            if status:
+                qs = qs.filter(status=status)
+            elif not (self.request.user.is_authenticated and self.request.user.is_staff):
+                qs = qs.filter(status=Showtime.Status.SCHEDULED)
         return qs
 
     def get_object(self):
@@ -107,3 +112,42 @@ class TicketViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
         ticket.refresh_from_db()
         return Response(TicketSerializer(ticket).data, status=http_status.HTTP_200_OK)
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    def post(self, request):
+        ser = RegisterSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        user = ser.save()
+        login(request, user)  # session cho browser
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response(
+            {"token": token.key, "user": UserSerializer(user).data},
+            status=201,
+        )
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        ser = LoginSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        user = authenticate(
+            request,
+            username=ser.validated_data["username"],
+            password=ser.validated_data["password"],
+        )
+        if user is None:
+            return Response({"detail": "Invalid credentials."}, status=400)
+        login(request, user)
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "user": UserSerializer(user).data})
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        Token.objects.filter(user=request.user).delete()
+        logout(request)
+        return Response({"detail": "Logged out."})
