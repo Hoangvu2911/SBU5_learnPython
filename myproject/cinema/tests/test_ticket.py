@@ -6,6 +6,7 @@ from rest_framework.authtoken.models import Token
 from datetime import timedelta
 from django.utils import timezone
 from cinema.seats import SeatHoldStore
+from django.conf import settings
 
 class TicketCustomerTestCase(APITestCase):
     def setUp(self):
@@ -135,6 +136,21 @@ class TicketCustomerTestCase(APITestCase):
         self.assertIn("detail", res.data)
         self.assertEqual(res.data["detail"], 'Method "DELETE" not allowed.')
 
+    def test_pay_ticket_success(self):
+        res = self.client.post(f"/api/tickets/{self.ticket.id}/pay/", format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["status"], "booked")
+
+    def test_list_cancels_expired_pending(self):
+        old = timezone.now() - timedelta(seconds=settings.SEAT_HOLD_TTL_SECONDS + 10)
+        Ticket.objects.filter(pk=self.ticket.pk).update(created_at=old)
+
+        res = self.client.get("/api/tickets/?status=pending")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["count"], 0)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Ticket.Status.CANCELLED)
+
 
 class TicketStaffTestCase(APITestCase):
     def setUp(self):
@@ -171,3 +187,12 @@ class TicketStaffTestCase(APITestCase):
             price=100000,
             status=Ticket.Status.PENDING,
         )
+
+    def test_staff_patch_ticket_status(self):
+        res = self.client.patch(
+            f"/api/tickets/{self.ticket.id}/",
+            {"status": "booked"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["status"], "booked")

@@ -3,6 +3,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 from .api_views import ( MovieViewSet, ShowtimeViewSet, TicketViewSet, RegisterView, LoginView, LogoutView,
 ActorViewSet, RoomViewSet)
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 router = DefaultRouter()
 router.register(r"movies", MovieViewSet, basename="movie")
@@ -16,4 +17,6 @@ urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="api_register"),
     path("auth/login/", LoginView.as_view(), name="api_login"),
     path("auth/logout/", LogoutView.as_view(), name="api_logout"),
+    path("schema/", SpectacularAPIView.as_view(), name="api-schema"),
+    path("docs/", SpectacularSwaggerView.as_view(url_name="api-schema"), name="swagger-ui"),
 ]

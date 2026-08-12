@@ -4,6 +4,10 @@
     const subEl = document.getElementById("seat-sub");
     const grid = document.getElementById("seat-grid");
     const errEl = document.getElementById("seat-error");
+
+    const POLL_INTERVAL_MS = 3000;
+    let pollId = null;
+    let inFlight = false;
   
     function formatDate(iso) {
       return iso ? new Date(iso).toLocaleString("vi-VN") : "";
@@ -34,6 +38,7 @@
           method: "POST",
           body: { seat: seat },
         });
+        if (pollId) clearInterval(pollId);
         window.location.href = "/tickets/mine/";
       } catch (err) {
         errEl.hidden = false;
@@ -41,9 +46,14 @@
       }
     }
   
-    async function load() {
+    async function fetchAndRender() {
+      if (inFlight) return;
+      inFlight = true;
+
       try {
-        const data = await cinemaApi("/api/showtimes/" + showtimeId + "/seats/");
+        const data = await cinemaApi("/api/showtimes/" + showtimeId + "/seats/", {
+          cache: "no-store",
+        });
         const st = data.showtime;
         titleEl.textContent = st.movie_title;
         subEl.textContent =
@@ -53,8 +63,19 @@
         titleEl.textContent = "Không tải được suất";
         errEl.hidden = false;
         errEl.textContent = err.message;
+      } finally {
+        inFlight = false;
       }
     }
-  
-    load();
+
+    function startPolling() {
+      fetchAndRender();
+      pollId = setInterval(fetchAndRender, POLL_INTERVAL_MS);
+
+      window.addEventListener("beforeunload", () => {
+        if (pollId) clearInterval(pollId);
+      });
+    }
+
+    startPolling();
   })();

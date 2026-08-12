@@ -63,6 +63,16 @@ def cleanup_pending(showtime) -> int:
         updated += pending_qs.update(status=Ticket.Status.CANCELLED)
     return updated
 
+def cleanup_all_expired_pending() -> int:
+    showtime_ids = (
+        Ticket.objects.filter(status=Ticket.Status.PENDING)
+        .values_list("showtime_id", flat=True)
+        .distinct()
+    )
+    total = 0
+    for st in Showtime.objects.filter(id__in=showtime_ids):
+        total += cleanup_pending(st)
+    return total
 
 @transaction.atomic
 def cancel_showtime(showtime) -> int:

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "rest_framework",
     "rest_framework.authtoken",
+    "drf_spectacular",
     'cinema',
 ]
 
@@ -163,5 +164,12 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "PAGE_SIZE": 12,
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Cinema API",
+    "DESCRIPTION": "API for booking cinema tickets",
+    "VERSION": "1.0.0",
 }

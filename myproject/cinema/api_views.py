@@ -8,7 +8,7 @@ from rest_framework import status as http_status
 
 from .booking import (
     sync_showtime_status, sync_showtimes_bulk, seat_map, book, pay,
-    cancel_ticket, BookingError, cancel_showtime,
+    cancel_ticket, BookingError, cancel_showtime, cleanup_all_expired_pending, cleanup_pending,
 )
 from .models import Movie, Room, Showtime, Ticket, Actor
 from .serializers import ( MovieSerializer, ShowtimeSerializer, TicketSerializer, RegisterSerializer, 
@@ -161,6 +161,16 @@ class TicketViewSet(viewsets.ModelViewSet):
         if not form.is_valid():
             return Response(form.errors, status=http_status.HTTP_400_BAD_REQUEST)
         ticket = form.save()
+        return Response(TicketSerializer(ticket).data)
+    
+    def list(self, request, *args, **kwargs):
+        cleanup_all_expired_pending()
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        ticket = self.get_object()
+        cleanup_pending(ticket.showtime)
+        ticket.refresh_from_db()
         return Response(TicketSerializer(ticket).data)
 
     @action(detail=True, methods=["post"], url_path="pay")

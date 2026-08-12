@@ -114,6 +114,11 @@ class MovieStaffTestCase(APITestCase):
         self.assertEqual(res.data["duration_minutes"], 120)
         self.assertEqual(res.data["director"], "Test Director")
 
+    def test_toggle_movie(self):
+        res = self.client.post(f"/api/movies/{self.movie.id}/toggle/", format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.data["is_active"])
+
 
 class MovieCustomerTestCase(APITestCase):
     def setUp(self):
