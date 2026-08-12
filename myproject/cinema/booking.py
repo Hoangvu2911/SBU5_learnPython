@@ -3,7 +3,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.db import transaction, IntegrityError
 from .models import Ticket, Showtime
-from .seats import generate_seats, is_valid_seat
+from .seats import generate_seats, is_valid_seat, SeatHoldStore
 
 
 def sync_showtime_status(showtime, now=None):
@@ -49,24 +49,29 @@ def cleanup_pending(showtime) -> int:
         status=Ticket.Status.PENDING,
         created_at__lte=now - ttl
     )
+    for t in expired_qs.only("seat"):
+        SeatHoldStore.release(showtime.id, t.seat)
     updated = expired_qs.update(status=Ticket.Status.CANCELLED)
 
     if not showtime.is_bookable(now):
-        extra = Ticket.objects.filter(
+        pending_qs = Ticket.objects.filter(
             showtime=showtime,
             status=Ticket.Status.PENDING,
-        ).update(status=Ticket.Status.CANCELLED)
-        updated += extra
+        )
+        for t in pending_qs.only("seat"):
+            SeatHoldStore.release(showtime.id, t.seat)
+        updated += pending_qs.update(status=Ticket.Status.CANCELLED)
     return updated
 
 
 @transaction.atomic
 def cancel_showtime(showtime) -> int:
     sync_showtime_status(showtime)
-    if showtime.status not in (Showtime.Status.SCHEDULED, Showtime.Status.ONGOING):
-        return 0
+    if showtime.status not in (Showtime.Status.SCHEDULED):
+        raise BookingError("Suất không thể hủy")
     showtime.status = Showtime.Status.CANCELLED
     showtime.save(update_fields=["status", "updated_at"])
+    SeatHoldStore.clear_showtime(showtime.id)
     return Ticket.objects.filter(
         showtime=showtime,
         status__in=[Ticket.Status.PENDING, Ticket.Status.BOOKED],
@@ -83,10 +88,12 @@ def seat_map(showtime) -> dict[str, str]:
         Ticket.objects.filter(showtime=showtime, status=Ticket.Status.BOOKED)
         .values_list("seat", flat=True)
     )
-    taken_held = set(
-        Ticket.objects.filter(showtime=showtime, status=Ticket.Status.PENDING)
-        .values_list("seat", flat=True)
-    )
+    taken_held = SeatHoldStore.held_seats(showtime.id)
+    if not taken_held:
+        taken_held = set(
+            Ticket.objects.filter(showtime=showtime, status=Ticket.Status.PENDING)
+            .values_list("seat", flat=True)
+        )
     rows = []
     for code in generate_seats(showtime.room.capacity):
         if code in taken_booked:
@@ -105,6 +112,8 @@ def book(user, showtime, seat: str) -> Ticket:
         raise BookingError("Suất không còn bookable")
     if not is_valid_seat(seat, showtime.room.capacity):
         raise BookingError("Ghế không hợp lệ")
+    if not SeatHoldStore.acquire(showtime.id, seat, user.id):
+        raise BookingError("Ghế đã được giữ/đặt")
     try:
         return Ticket.objects.create(
             showtime=showtime,
@@ -130,6 +139,7 @@ def pay(user, ticket) -> Ticket:
         raise BookingError("Suất không còn bookable")
     ticket.status = Ticket.Status.BOOKED
     ticket.save(update_fields=["status", "updated_at"])
+    SeatHoldStore.release(showtime.id, ticket.seat)
     return ticket
 
 
@@ -146,4 +156,5 @@ def cancel_ticket(user, ticket) -> Ticket:
         raise BookingError("Suất đã bắt đầu / đã hủy")
     ticket.status = Ticket.Status.CANCELLED
     ticket.save(update_fields=["status", "updated_at"])
+    SeatHoldStore.release(showtime.id, ticket.seat)
     return ticket

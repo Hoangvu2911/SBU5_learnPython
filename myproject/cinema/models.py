@@ -92,7 +92,7 @@ class Showtime(models.Model):
         ]
 
     def is_bookable(self, now=None) -> bool:
-        return self.status == self.Status.SCHEDULED
+        return self.status in (self.Status.SCHEDULED, self.Status.ONGOING)
 
     def __str__(self):
         return f"{self.movie.title} - {self.room.name} - {self.start_at}"

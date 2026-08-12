@@ -105,7 +105,7 @@ class ShowtimeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="cancel", permission_classes=[IsAdminUser])
     def cancel_showtime(self, request, pk=None):
         showtime = self.get_object()
-        if showtime.status in (Showtime.Status.CANCELLED, Showtime.Status.COMPLETED):
+        if showtime.status in (Showtime.Status.ONGOING, Showtime.Status.CANCELLED, Showtime.Status.COMPLETED):
             return Response(
                 {"detail": f"Không thể hủy suất đã {showtime.status}."},
                 status=http_status.HTTP_400_BAD_REQUEST,
@@ -209,7 +209,7 @@ class LoginView(APIView):
             password=ser.validated_data["password"],
         )
         if user is None:
-            return Response({"detail": "Invalid credentials."}, status=400)
+            return Response({"detail": "Invalid credentials"}, status=401)
         login(request, user)
         token, _ = Token.objects.get_or_create(user=user)
         return Response({"token": token.key, "user": UserSerializer(user).data})
