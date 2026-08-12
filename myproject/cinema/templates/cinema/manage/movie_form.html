@@ -14,8 +14,15 @@
     {% csrf_token %}
     {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
     {% for field in form %}
-      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-      {{ field }}
+      {% if field.field.widget.input_type == "checkbox" %}
+        <label class="check-row" for="{{ field.id_for_label }}">
+          {{ field }}
+          <span>{{ field.label }}</span>
+        </label>
+      {% else %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+      {% endif %}
       {{ field.errors }}
     {% endfor %}
 
@@ -23,13 +30,18 @@
     {{ formset.management_form }}
     {% if formset.non_form_errors %}{{ formset.non_form_errors }}{% endif %}
     {% for f in formset %}
-      <div>
+      <div class="cast-row">
         {{ f.id }}
-        <label>{{ f.actor.label }}</label>
-        {{ f.actor }}
-        {{ f.actor.errors }}
+        <div class="cast-actor">
+          <label for="{{ f.actor.id_for_label }}">{{ f.actor.label }}</label>
+          {{ f.actor }}
+          {{ f.actor.errors }}
+        </div>
         {% if f.DELETE %}
-          <label>{{ f.DELETE }} Xóa</label>
+          <label class="check-row cast-delete" for="{{ f.DELETE.id_for_label }}">
+            {{ f.DELETE }}
+            <span>Xóa</span>
+          </label>
         {% endif %}
       </div>
     {% endfor %}

@@ -6,7 +6,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status as http_status
 
-from .booking import sync_showtime_status, seat_map, book, pay, cancel_ticket, BookingError, cancel_showtime
+from .booking import (
+    sync_showtime_status, sync_showtimes_bulk, seat_map, book, pay,
+    cancel_ticket, BookingError, cancel_showtime,
+)
 from .models import Movie, Room, Showtime, Ticket, Actor
 from .serializers import ( MovieSerializer, ShowtimeSerializer, TicketSerializer, RegisterSerializer, 
 LoginSerializer, UserSerializer, ActorSerializer, RoomSerializer)
@@ -63,19 +66,16 @@ class ShowtimeViewSet(viewsets.ModelViewSet):
             .order_by(order_by)
         )
 
-        if self.action == "list" and is_staff:
-            for st in qs:
-                sync_showtime_status(st)
-
         movie_id = self.request.query_params.get("movie", "").strip()
         status = self.request.query_params.get("status", "").strip()
         if movie_id:
             qs = qs.filter(movie_id=movie_id)
 
         if self.action == "list":
+            sync_showtimes_bulk(qs)
             if status:
                 qs = qs.filter(status=status)
-            elif not (self.request.user.is_authenticated and self.request.user.is_staff):
+            elif not is_staff:
                 qs = qs.filter(status=Showtime.Status.SCHEDULED)
         return qs
 
@@ -154,7 +154,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         if not request.user.is_staff:
             return Response(
                 {"detail": "Chỉ quản trị viên mới có quyền thay đổi trạng thái vé."},
-                status=http_status.HTTP_400_BAD_REQUEST,
+                status=http_status.HTTP_403_FORBIDDEN,
             )
         ticket = self.get_object()
         form = TicketStatusForm(data=request.data, instance=ticket)

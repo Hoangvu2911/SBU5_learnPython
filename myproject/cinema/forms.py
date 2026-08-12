@@ -28,6 +28,9 @@ class MovieForm(forms.ModelForm):
             "title", "description", "release_date", "genre",
             "rating", "duration_minutes", "director", "is_active",
         )
+        labels = {
+            "is_active": "Đang chiếu",
+        }
     
     def clean_duration_minutes(self):
         duration = self.cleaned_data["duration_minutes"]

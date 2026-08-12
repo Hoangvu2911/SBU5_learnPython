@@ -97,6 +97,40 @@
       background: #121821;
       color: var(--text);
     }
+    .form-stack .check-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.85rem;
+      cursor: pointer;
+      width: fit-content;
+    }
+    .form-stack .check-row input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+    .cast-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.75rem;
+      margin-top: 0.35rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .cast-row .cast-actor {
+      flex: 1;
+      min-width: 0;
+    }
+    .cast-row .cast-actor label {
+      margin-top: 0.5rem;
+    }
+    .cast-row .cast-delete {
+      margin-top: 0;
+      margin-bottom: 0.55rem;
+      white-space: nowrap;
+    }
     .form-stack .btn {
       margin-top: 1rem;
       padding: 0.55rem 1rem;

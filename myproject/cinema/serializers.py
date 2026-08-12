@@ -2,10 +2,8 @@ from rest_framework import serializers
 from .models import Movie, Actor, Showtime, Ticket, Room, MovieActor
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
-from .forms import ShowtimeForm, TicketStatusForm
+from .forms import ShowtimeForm
 
 class MovieSerializer(serializers.ModelSerializer):
     cast = serializers.SerializerMethodField()
@@ -75,7 +73,7 @@ class MovieSerializer(serializers.ModelSerializer):
 class ShowtimeSerializer(serializers.ModelSerializer):
     room_name = serializers.CharField(source="room.name", read_only=True)
     movie_title = serializers.CharField(source="movie.title", read_only=True)
-    is_bookable = serializers.BooleanField(read_only=True)
+    is_bookable = serializers.SerializerMethodField()
 
     class Meta:
         model = Showtime
@@ -84,6 +82,9 @@ class ShowtimeSerializer(serializers.ModelSerializer):
             "end_at", "base_price", "status", "is_bookable"
         )
         read_only_fields = ("id", "end_at", "status", "movie_title", "room_name", "is_bookable")
+
+    def get_is_bookable(self, obj):
+        return obj.is_bookable()
 
     def _save_via_form(self, instance=None):
         form = ShowtimeForm(data=self.initial_data, instance=instance)
@@ -97,6 +98,8 @@ class ShowtimeSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         return self._save_via_form(instance=instance)
 
+
+class ShowtimeSerializer(serializers.ModelSerializer)
 
 class TicketSerializer(serializers.ModelSerializer):
     movie_title = serializers.CharField(source="showtime.movie.title", read_only=True)
@@ -123,6 +126,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=150)
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ("username", "password", "password_confirm")
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():

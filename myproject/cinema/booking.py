@@ -22,6 +22,24 @@ def sync_showtime_status(showtime, now=None):
     return showtime
 
 
+def sync_showtimes_bulk(qs=None, now=None):
+    now = now or timezone.now()
+    qs = Showtime.objects.all() if qs is None else qs
+    qs = qs.exclude(status=Showtime.Status.CANCELLED)
+    qs.filter(end_at__lte=now).exclude(status=Showtime.Status.COMPLETED).update(
+        status=Showtime.Status.COMPLETED,
+        updated_at=now,
+    )
+    qs.filter(start_at__lte=now, end_at__gt=now).exclude(status=Showtime.Status.ONGOING).update(
+        status=Showtime.Status.ONGOING,
+        updated_at=now,
+    )
+    qs.filter(start_at__gt=now).exclude(status=Showtime.Status.SCHEDULED).update(
+        status=Showtime.Status.SCHEDULED,
+        updated_at=now,
+    )
+
+
 def cleanup_pending(showtime) -> int:
     sync_showtime_status(showtime)
     now = timezone.now()
