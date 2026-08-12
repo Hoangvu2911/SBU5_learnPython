@@ -99,8 +99,6 @@ class ShowtimeSerializer(serializers.ModelSerializer):
         return self._save_via_form(instance=instance)
 
 
-class ShowtimeSerializer(serializers.ModelSerializer)
-
 class TicketSerializer(serializers.ModelSerializer):
     movie_title = serializers.CharField(source="showtime.movie.title", read_only=True)
     room_name = serializers.CharField(source="showtime.room.name", read_only=True)
