@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinema</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header__inner">
+            <a class="header__brand" href="#">Cinema</a>
+            <button class="header__toggle" type="button" aria-label="Mở menu" aria-expanded="false"> 
+                <span class="header__toggle-bar"></span>
+                <span class="header__toggle-bar"></span>
+                <span class="header__toggle-bar"></span>
+            </button>
+            <nav class="nav" id="main-nav">
+                <a class="nav__link nav__link--active" href="#">Trang chủ</a>
+                <a class="nav__link" href="#now-showing">Đang chiếu</a>
+                <a class="nav__link" href="#features">Tiện ích</a>
+                <a class="nav__link" href="#cta">Đặt vé</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1 class="hero__title">Cinema</h1>
+            <p class="hero__subtitle">Chọn phim · Chọn ghế · Thanh toán nhanh</p>
+            <a class="hero__cta" href="#cta">Xem lịch chiếu</a>
+        </section>
+
+        <section class="section" id="now-showing">
+            <h2 class="section__title">Phim nổi bật</h2>
+            <ul class="movie-grid">
+                <li class="movie-card">
+                  <h3 class="movie-card__title">Phim mẫu A</h3>
+                  <p class="movie-card__meta">Hành động · 120 phút · ★ 8.5</p>
+                </li>
+                <li class="movie-card">
+                    <h3 class="movie-card__title">Phim mẫu B</h3>
+                    <p class="movie-card__meta">Hành động · 90 phút · ★ 4.5</p>
+                </li>
+                <li class="movie-card">
+                    <h3 class="movie-card__title">Phim mẫu C</h3>
+                    <p class="movie-card__meta">Hành động · 100 phút · ★ 7.5</p>
+                </li>
+              </ul>
+        </section>
+
+        <section class="section" id="features">
+            <h2 class="section__title">Vì sao chọn Cinema</h2>
+            <div class="feature-grid">
+                <article class="feature">
+                    <h3 class="feature__title">Giữ ghế realtime</h3>
+                    <p class="feature__text">Ghế được giữ tạm khi bạn chọn.</p>
+                </article>
+                <article class="feature">
+                    <h3 class="feature__title">Thanh toán nhanh</h3>
+                    <p class="feature__text">Thanh toán nhanh và dễ dàng.</p>
+                </article>
+                <article class="feature">
+                    <h3 class="feature__title">Hỗ trợ 24/7</h3>
+                    <p class="feature__text">Hỗ trợ 24/7 khi bạn cần.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section section--cta" id="cta">
+            <h2 class="section__title">Sẵn sàng đặt vé?</h2>
+            <a class="hero__cta" href="#">Bắt đầu</a>
+        </section>
+    </main>
+    <footer class="footer">
+        <p class="footer__text">© Cinema</p>
+    </footer>
+    <script src="js/nav.js"></script>
+</body>
+</html> 

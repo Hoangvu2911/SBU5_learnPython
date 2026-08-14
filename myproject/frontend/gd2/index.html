@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cinema — Danh sách phim (GĐ2a)</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="header">
+      <h1 class="header__title">Cinema</h1>
+      <p class="header__sub">GĐ2a — Fetch danh sách phim từ API</p>
+    </header>
+
+    <form id="movie-filter" class="filter">
+      <input
+        class="filter__input"
+        type="search"
+        name="q"
+        placeholder="Tìm phim..."
+        autocomplete="off"
+      />
+      <select class="filter__select" name="genre">
+        <option value="">Tất cả thể loại</option>
+        <option value="action">Hành động</option>
+        <option value="Drama">Tình cảm</option>
+        <option value="horror">Kinh dị</option>
+        <option value="animation">Hoạt hình</option>
+      </select>
+      <button class="filter__btn" type="submit">Lọc</button>
+    </form>
+
+    <p id="movie-empty" class="empty" hidden>Không có phim</p>
+
+    <ul id="movie-grid" class="movie-grid"></ul>
+
+    <div id="movie-pagination" class="pager"></div>
+  </div>
+
+  <!-- BẮT BUỘC type="module" để import api.js -->
+  <script type="module" src="js/movies.js"></script>
+</body>
+</html>
