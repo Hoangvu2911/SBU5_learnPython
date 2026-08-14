@@ -4,7 +4,6 @@ from django.utils import timezone
 from django.db import transaction, IntegrityError
 from .models import Ticket, Showtime
 from .seats import generate_seats, is_valid_seat, SeatHoldStore
-from cinema.services.tickets import TicketFactory
 
 
 def sync_showtime_status(showtime, now=None):
@@ -125,6 +124,7 @@ def book(user, showtime, seat: str) -> Ticket:
         raise BookingError("Ghế không hợp lệ")
     if not SeatHoldStore.acquire(showtime.id, seat, user.id):
         raise BookingError("Ghế đã được giữ/đặt")
+    from cinema.services.tickets import TicketFactory
     return TicketFactory.create_ticket_pending(showtime, user, seat)
     # try:
     #     return Ticket.objects.create(
