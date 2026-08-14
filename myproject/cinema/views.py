@@ -6,9 +6,16 @@ from django.contrib import messages
 from .forms import CustomerRegistrationForm, SeatBookForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from .booking import book, BookingError, seat_map, cleanup_pending, pay, cancel_ticket, sync_showtime_status
+from .booking import (
+    # book, seat_map, pay, cancel_ticket,  # cũ: gọi domain trực tiếp
+    BookingError, cleanup_pending,
+    # sync_showtime_status,
+)
+from .services.booking import BookingFacade
 from django.core.paginator import Paginator
 from django.db.models import Q
+
+booking_facade = BookingFacade()
 # Create your views here.
 
 
@@ -92,7 +99,8 @@ def ticket_pay(request, pk):
     
     if request.method == "POST":
         try:
-            pay(request.user, ticket)
+            # pay(request.user, ticket)
+            booking_facade.pay_ticket(request.user, ticket)
             messages.success(request, f"Đã thanh toán ghế {ticket.seat}.")
             return redirect("cinema:my_tickets")
         except BookingError as e:
@@ -110,7 +118,8 @@ def ticket_cancel(request, pk):
     )
     if request.method == "POST":
         try:
-            cancel_ticket(request.user, ticket)
+            # cancel_ticket(request.user, ticket)
+            booking_facade.cancel_ticket(request.user, ticket)
             messages.success(request, f"Đã hủy ghế {ticket.seat}.")
         except BookingError as e:
             messages.error(request, str(e))

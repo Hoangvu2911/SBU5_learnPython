@@ -5,6 +5,7 @@ import threading
 class RedisClient:
     _instance = None
     _client = None
+    _lock = threading.Lock()
 
     def __new__(cls):
         if not cls._instance:
@@ -23,7 +24,7 @@ class RedisClient:
                         decode_responses=True,
                     )
         return self._client
-                    
+
     def availabel(self) -> bool:
         try:
             return bool(self.get_client().ping())
@@ -32,3 +33,9 @@ class RedisClient:
 
 def get_redis() -> RedisClient:
     return RedisClient()
+
+def get_client():
+    return get_redis().get_client()
+
+def redis_available() -> bool:
+    return get_redis().availabel()

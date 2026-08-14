@@ -25,7 +25,7 @@ class RedisSeatHoldAdapter:
             get_client().set(
                 _hold_key(showtime_id, seat),
                 user_id,
-                ex=settings.SEAT_HOLD_TIMEOUT,
+                ex=settings.SEAT_HOLD_TTL_SECONDS,
                 nx=True,
             )
         )
@@ -75,7 +75,7 @@ class PassthroughSeatHold:
     def clear_showtime(self, showtime_id: int) -> None:
         return None
 
-def get_hold_strategy() -> SeatHold:
+def get_hold_strategy() -> SeatHoldPort:
     if redis_available():
         return RedisHoldStrategy()
     return PassthroughSeatHold()

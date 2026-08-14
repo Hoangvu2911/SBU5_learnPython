@@ -7,9 +7,11 @@ from rest_framework.response import Response
 from rest_framework import status as http_status
 
 from .booking import (
-    sync_showtime_status, sync_showtimes_bulk, seat_map, book, pay,
-    cancel_ticket, BookingError, cancel_showtime, cleanup_all_expired_pending, cleanup_pending,
+    sync_showtime_status, sync_showtimes_bulk,
+    # seat_map, book, pay, cancel_ticket,  # cũ: gọi domain trực tiếp
+    BookingError, cancel_showtime, cleanup_all_expired_pending, cleanup_pending,
 )
+from .services.booking import BookingFacade
 from .models import Movie, Room, Showtime, Ticket, Actor
 from .serializers import ( MovieSerializer, ShowtimeSerializer, TicketSerializer, RegisterSerializer, 
 LoginSerializer, UserSerializer, ActorSerializer, RoomSerializer)
@@ -18,6 +20,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
 from .forms import TicketStatusForm
 
+booking_facade = BookingFacade()
 class MovieViewSet(viewsets.ModelViewSet):
     serializer_class = MovieSerializer
     permission_classes = [IsStaffOrReadOnly]
@@ -87,9 +90,11 @@ class ShowtimeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="seats")
     def seats(self, request, pk=None):
         showtime = self.get_object()
+        # seats = seat_map(showtime)
+        seats = booking_facade.get_seat_map(showtime)
         return Response({
             "showtime": ShowtimeSerializer(showtime).data,
-            "seats": seat_map(showtime),
+            "seats": seats,
         })
 
     @action(detail=True, methods=["post"], url_path="book", permission_classes=[IsAuthenticated])
@@ -97,7 +102,8 @@ class ShowtimeViewSet(viewsets.ModelViewSet):
         showtime = self.get_object()
         seat = request.data.get("seat", "").strip()
         try:
-            ticket = book(request.user, showtime, seat)
+            # ticket = book(request.user, showtime, seat)
+            ticket = booking_facade.book_seat(request.user, showtime, seat)
         except BookingError as e:
             return Response({"detail": str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
         return Response(TicketSerializer(ticket).data, status=http_status.HTTP_201_CREATED)
@@ -177,7 +183,8 @@ class TicketViewSet(viewsets.ModelViewSet):
     def pay_ticket(self, request, pk=None):
         ticket = self.get_object()
         try:
-            pay(request.user, ticket)
+            # pay(request.user, ticket)
+            booking_facade.pay_ticket(request.user, ticket)
         except BookingError as e:
             return Response({"detail": str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
         ticket.refresh_from_db()
@@ -187,7 +194,8 @@ class TicketViewSet(viewsets.ModelViewSet):
     def cancel(self, request, pk=None):
         ticket = self.get_object()
         try:
-            cancel_ticket(request.user, ticket)
+            # cancel_ticket(request.user, ticket)
+            booking_facade.cancel_ticket(request.user, ticket)
         except BookingError as e:
             return Response({"detail": str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
         ticket.refresh_from_db()

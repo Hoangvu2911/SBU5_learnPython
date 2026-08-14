@@ -1,7 +1,7 @@
 from cinema import booking as legacy
 from cinema.services.seat_hold import get_hold_strategy
 from cinema.seats import generate_seats
-from .models import Ticket
+from cinema.models import Ticket
 
 class SeatMapBuilder:
     def __init__(self, showtime):
